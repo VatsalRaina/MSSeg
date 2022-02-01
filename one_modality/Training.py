@@ -59,7 +59,7 @@ def main(args):
 
     root_dir = args.path_save  # Path where the trained model is located
     path_data = args.path_data
-    flair = glob(os.path.join(path_data, "*FLAIR.nii.gz"))
+    flair = glob(path_data + "*FLAIR.nii.gz")
     print(flair)
                                      # Collect all flair images sorted
     mprage = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
