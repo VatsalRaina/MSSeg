@@ -59,11 +59,12 @@ def main(args):
 
     root_dir = args.path_save  # Path where the trained model is located
     path_data = args.path_data
-    flair = sorted(glob(os.path.join(path_data, "*/FLAIR.nii.gz")),
-                 key=lambda i: int(re.sub('\D', '', i)))                    # Collect all flair images sorted
-    mprage = sorted(glob(os.path.join(path_data, "*/FLAIR.nii.gz")),
+    flair = glob(os.path.join(path_data, "*FLAIR.nii.gz"))
+    print(flair)
+                                     # Collect all flair images sorted
+    mprage = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))                    # Collect all flair images again so that I can try and run this code directly  
-    segs = sorted(glob(os.path.join(path_data, "*/gt.nii")),
+    segs = sorted(glob(os.path.join(path_data, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))                   # Collect all corresponding ground truths
 
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
