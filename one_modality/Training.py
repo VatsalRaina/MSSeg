@@ -75,9 +75,9 @@ def main(args):
     train_files=[]
     val_files=[]
     for i in t:
-        train_files = train_files + [{"flair": fl,"label": seg} for fl, seg in zip(flair[i:i+1], segs[i:i+1])]
+        train_files = train_files + [{"image": fl,"label": seg} for fl, seg in zip(flair[i:i+1], segs[i:i+1])]
     for j in v:
-        val_files = val_files + [{"flair": fl,"label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
+        val_files = val_files + [{"image": fl,"label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
     print("Training cases:", len(train_files))
     print("Validation cases:", len(val_files))
     
@@ -85,16 +85,15 @@ def main(args):
 
     train_transforms = Compose(
     [
-        LoadNiftid(keys=["flair","label"]),
+        LoadNiftid(keys=["image","label"]),
         
         #SqueezeDimd(keys=["flair", "mprage"], dim=-1),
         
-        AddChanneld(keys=["flair","label"]),
-        Spacingd(keys=["flair","label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-        NormalizeIntensityd(keys=["flair"], nonzero=True),
-        RandShiftIntensityd(keys="flair",offsets=0.1,prob=1.0),
-        RandScaleIntensityd(keys="flair",factors=0.1,prob=1.0),
-        ConcatItemsd(keys=["flair"], name="image"),
+        AddChanneld(keys=["image","label"]),
+        Spacingd(keys=["image","label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+        NormalizeIntensityd(keys=["image"], nonzero=True),
+        RandShiftIntensityd(keys="image",offsets=0.1,prob=1.0),
+        RandScaleIntensityd(keys="image",factors=0.1,prob=1.0),
         RandCropByPosNegLabeld(keys=["image", "label"],label_key="label",spatial_size=(128, 128, 128),
             pos=4,neg=1,num_samples=32,image_key="image"),
         RandSpatialCropd(keys=["image", "label"], roi_size=(96,96,96), random_center=True, random_size=False),
@@ -109,14 +108,13 @@ def main(args):
     )
     val_transforms = Compose(
     [
-        LoadNiftid(keys=["flair", "label"]),
+        LoadNiftid(keys=["image", "label"]),
         
         #SqueezeDimd(keys=["flair", "mprage"], dim=-1),
         
-        AddChanneld(keys=["flair", "mprage","label"]),
-        Spacingd(keys=["flair", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-        NormalizeIntensityd(keys=["flair"], nonzero=True),
-        ConcatItemsd(keys=["flair"], name="image"),
+        AddChanneld(keys=["image","label"]),
+        Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+        NormalizeIntensityd(keys=["image"], nonzero=True),
         ToTensord(keys=["image", "label"]),
     ]
     )
