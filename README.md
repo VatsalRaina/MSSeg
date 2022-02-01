@@ -1,7 +1,7 @@
 # MSSeg
 Segmentation of white matter lesions
 ## Dependencies
-- monai
+- monai==0.3.0
 - torch
 - numpy
 - matplotlib
