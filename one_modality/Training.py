@@ -60,11 +60,7 @@ def main(args):
     root_dir = args.path_save  # Path where the trained model is located
     path_data = args.path_data
     flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
-                 key=lambda i: int(re.sub('\D', '', i)))  
-    print(flair)
-                                     # Collect all flair images sorted
-    mprage = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
-                 key=lambda i: int(re.sub('\D', '', i)))                    # Collect all flair images again so that I can try and run this code directly  
+                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
     segs = sorted(glob(os.path.join(path_data, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))                   # Collect all corresponding ground truths
 
@@ -79,9 +75,9 @@ def main(args):
     train_files=[]
     val_files=[]
     for i in t:
-        train_files = train_files + [{"flair": fl,"mprage": mp,"label": seg} for fl, mp, seg in zip(flair[i:i+1], mprage[i:i+1], segs[i:i+1])]
+        train_files = train_files + [{"flair": fl,"label": seg} for fl, seg in zip(flair[i:i+1], segs[i:i+1])]
     for j in v:
-        val_files = val_files + [{"flair": fl,"mprage": mp,"label": seg} for fl, mp, seg in zip(flair[j:j+1], mprage[j:j+1], segs[j:j+1])]
+        val_files = val_files + [{"flair": fl,"label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
     print("Training cases:", len(train_files))
     print("Validation cases:", len(val_files))
     
@@ -89,18 +85,16 @@ def main(args):
 
     train_transforms = Compose(
     [
-        LoadNiftid(keys=["flair", "mprage","label"]),
+        LoadNiftid(keys=["flair","label"]),
         
         #SqueezeDimd(keys=["flair", "mprage"], dim=-1),
         
-        AddChanneld(keys=["flair", "mprage","label"]),
-        Spacingd(keys=["flair","mprage","label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear","nearest")),
-        NormalizeIntensityd(keys=["flair", "mprage"], nonzero=True),
+        AddChanneld(keys=["flair","label"]),
+        Spacingd(keys=["flair","label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+        NormalizeIntensityd(keys=["flair"], nonzero=True),
         RandShiftIntensityd(keys="flair",offsets=0.1,prob=1.0),
-        RandShiftIntensityd(keys="mprage",offsets=0.1,prob=1.0),
         RandScaleIntensityd(keys="flair",factors=0.1,prob=1.0),
-        RandScaleIntensityd(keys="mprage",factors=0.1,prob=1.0),
-        ConcatItemsd(keys=["flair", "mprage"], name="image"),
+        ConcatItemsd(keys=["flair"], name="image"),
         RandCropByPosNegLabeld(keys=["image", "label"],label_key="label",spatial_size=(128, 128, 128),
             pos=4,neg=1,num_samples=32,image_key="image"),
         RandSpatialCropd(keys=["image", "label"], roi_size=(96,96,96), random_center=True, random_size=False),
@@ -115,37 +109,17 @@ def main(args):
     )
     val_transforms = Compose(
     [
-        LoadNiftid(keys=["flair", "mprage", "label"]),
+        LoadNiftid(keys=["flair", "label"]),
         
         #SqueezeDimd(keys=["flair", "mprage"], dim=-1),
         
         AddChanneld(keys=["flair", "mprage","label"]),
-        Spacingd(keys=["flair", "mprage","label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear","nearest")),
-        NormalizeIntensityd(keys=["flair", "mprage"], nonzero=True),
-        ConcatItemsd(keys=["flair", "mprage"], name="image"),
+        Spacingd(keys=["flair", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+        NormalizeIntensityd(keys=["flair"], nonzero=True),
+        ConcatItemsd(keys=["flair"], name="image"),
         ToTensord(keys=["image", "label"]),
     ]
     )
-    
-    #%% Print an example slice with segmentation
-    
-    check_ds = Dataset(data=train_files, transform=train_transforms)
-    check_loader = DataLoader(check_ds, batch_size=1)
-    check_data = first(check_loader)
-    image, label = (check_data["image"][0][0], check_data["label"][0][0])
-    mp2rage = check_data["image"][0][1]
-    # plot the slice [:, :, 80]
-    plt.figure("check", (12, 6))
-    plt.subplot(1, 3, 1)
-    plt.title("flair")
-    plt.imshow(image[:, :, 48], cmap="gray")
-    plt.subplot(1, 3, 2)
-    plt.title("mp2rage")
-    plt.imshow(mp2rage[:, :, 48], cmap="gray")
-    plt.subplot(1, 3, 3)
-    plt.title("label")
-    plt.imshow(label[:, :, 48])
-    plt.show()
 
     #%%
     train_ds = CacheDataset(data=train_files, transform=train_transforms, cache_rate=0.5, num_workers=0)
@@ -160,7 +134,7 @@ def main(args):
     # device = torch.device("cuda:0")
     model = UNet(
     dimensions=3,
-    in_channels=2,
+    in_channels=1,
     out_channels=2,
     channels=(32, 64, 128, 256, 512),
     strides=(2, 2, 2, 2),

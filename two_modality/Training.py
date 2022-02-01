@@ -1,10 +1,12 @@
 """
-@author: Francesco La Rosa
+@author: Originally by Francesco La Rosa
+         Adapted by Vatsal Raina
 """
 
-
+import argparse
 import os
-import tempfile
+import sys
+
 import matplotlib.pyplot as plt
 from glob import glob
 import torch
@@ -21,26 +23,55 @@ from monai.transforms import (
     RandRotate90d,RandShiftIntensityd,RandAffined,RandSpatialCropd, RandScaleIntensityd, Activations,SqueezeDimd)
 from monai.utils import first
 import numpy as np
+import random
+
+parser = argparse.ArgumentParser(description='Get all command line arguments.')
+parser.add_argument('--learning_rate', type=float, default=1e-5, help='Specify the initial learning rate')
+parser.add_argument('--n_epochs', type=int, default=200, help='Specify the number of epochs to train for')
+parser.add_argument('--seed', type=int, default=1, help='Specify the global random seed')
+parser.add_argument('--path_data', type=str, default='', help='Specify the path to the training data files directory')
+parser.add_argument('--path_save', type=str, default='', help='Specify the path to the trained model will be saved')
+
+# Set device
+def get_default_device():
+    if torch.cuda.is_available():
+        print("Got CUDA!")
+        return torch.device('cuda')
+    else:
+        return torch.device('cpu')
 
 
-def main(temp):
-    
-    root_dir= ''  # Path where the trained model is located
-    path_data = ''  # Path where the data is
-    flair = sorted(glob(os.path.join(path_data, "*/FLAIR.nii.gz")),
-                 key=lambda i: int(re.sub('\D', '', i)))                    # Collect all flair images sorted
-    mprage = sorted(glob(os.path.join(path_data, "*/MPRAGE.nii.gz")),
-                 key=lambda i: int(re.sub('\D', '', i)))                    # Collect all mprage images sorted   
-    segs = sorted(glob(os.path.join(path_data, "*/gt.nii")),
+def main(args):
+
+    if not os.path.isdir('CMDs'):
+        os.mkdir('CMDs')
+    with open('CMDs/train.cmd', 'a') as f:
+        f.write(' '.join(sys.argv) + '\n')
+        f.write('--------------------------------\n')
+
+    seed_val = args.seed
+    random.seed(seed_val)
+    np.random.seed(seed_val)
+    torch.manual_seed(seed_val)
+    torch.cuda.manual_seed_all(seed_val)
+    # Choose device
+    device = get_default_device()
+
+    root_dir = args.path_save  # Path where the trained model is located
+    path_data = args.path_data
+    flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
+    mprage = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))                    # Collect all flair images again so that I can try and run this code directly  
+    segs = sorted(glob(os.path.join(path_data, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))                   # Collect all corresponding ground truths
 
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
     
-    np.random.seed(1)
     indices = np.random.permutation(N)
-    # 20 random cases are kept for validation, the others for training
-    v=indices[:5]
-    t=indices[5:]
+    # The overall number of patients in the training set is 15
+    v=indices[:3]
+    t=indices[3:]
 
 
     train_files=[]
@@ -52,6 +83,8 @@ def main(temp):
     print("Training cases:", len(train_files))
     print("Validation cases:", len(val_files))
     
+    # The below set of transformations perform the data augmentation
+
     train_transforms = Compose(
     [
         LoadNiftid(keys=["flair", "mprage","label"]),
@@ -122,7 +155,7 @@ def main(temp):
     val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
     val_train_loader = DataLoader(val_train_ds, batch_size=1, num_workers=0)
   
-    device = torch.device("cuda:0")
+    # device = torch.device("cuda:0")
     model = UNet(
     dimensions=3,
     in_channels=2,
@@ -133,11 +166,11 @@ def main(temp):
     loss_function = DiceLoss(to_onehot_y=True, softmax=True, sigmoid=False,
                              include_background=False)
 
-    optimizer = torch.optim.Adam(model.parameters(), 1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), args.learning_rate)
     #Load trained model 
-    model.load_state_dict(torch.load(os.path.join(root_dir, "Initial_model.pth")))
+    # model.load_state_dict(torch.load(os.path.join(root_dir, "Initial_model.pth")))
     
-    epoch_num = 200
+    epoch_num = args.n_epochs
     val_interval = 5
     best_metric = -1
     best_metric_epoch = -1
@@ -265,5 +298,5 @@ def main(temp):
           
 #%%
 if __name__ == "__main__":
-    with tempfile.TemporaryDirectory() as tempdir:
-        main(tempdir)
+    args = parser.parse_args()
+    main(args)
