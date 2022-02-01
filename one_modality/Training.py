@@ -5,6 +5,7 @@
 
 import argparse
 import os
+import sys
 
 import matplotlib.pyplot as plt
 from glob import glob
@@ -68,9 +69,9 @@ def main(args):
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
     
     indices = np.random.permutation(N)
-    # 20 random cases are kept for validation, the others for training
-    v=indices[:5]
-    t=indices[5:]
+    # The overall number of patients in the training set is 15
+    v=indices[:3]
+    t=indices[3:]
 
 
     train_files=[]
@@ -82,6 +83,8 @@ def main(args):
     print("Training cases:", len(train_files))
     print("Validation cases:", len(val_files))
     
+    # The below set of transformations perform the data augmentation
+
     train_transforms = Compose(
     [
         LoadNiftid(keys=["flair", "mprage","label"]),
