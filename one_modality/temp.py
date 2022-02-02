@@ -61,11 +61,11 @@ def main(args):
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
     
     #indices = np.random.permutation(N)
-    # indices = np.asarray([3, 7, 6, 2, 10, 4, 1, 13, 0, 14, 9, 8, 12, 11, 5])
+    indices = np.asarray([3, 7, 6, 2, 10, 4, 1, 13, 0, 14, 9, 8, 12, 11, 5])
 
-    indices = np.arange(N)
-    v=indices[:]
-    #v=indices[:3]
+    #indices = np.arange(N)
+    # v=indices[:]
+    v=indices[:3] 
 
     val_files=[]
     for j in v:
