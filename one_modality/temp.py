@@ -143,8 +143,8 @@ def main(args):
                              include_background=False)
 
     optimizer = torch.optim.Adam(model.parameters(), args.learning_rate)
-    #Load trained model 
-    # model.load_state_dict(torch.load(os.path.join(root_dir, "Initial_model.pth")))
+    # Load trained model 
+    model.load_state_dict(torch.load(os.path.join(root_dir, "Best_model_finetuning.pth")))
     
     epoch_num = args.n_epochs
     val_interval = 5
@@ -157,46 +157,46 @@ def main(args):
     thresh = 0.4
 
     for epoch in range(epoch_num):
-        print("-" * 10)
-        print(f"epoch {epoch + 1}/{epoch_num}")
-        model.train()
-        epoch_loss = 0
-        step = 0
-        for batch_data in train_loader:
+        # print("-" * 10)
+        # print(f"epoch {epoch + 1}/{epoch_num}")
+        # model.train()
+        # epoch_loss = 0
+        # step = 0
+        # for batch_data in train_loader:
 
-            n_samples = batch_data["image"].size(0)
-            for m in range(0,batch_data["image"].size(0),2):
-                step += 2
-                inputs, labels = (
-                    batch_data["image"][m:(m+2)].to(device),
-                    batch_data["label"][m:(m+2)].type(torch.LongTensor).to(device))
-                optimizer.zero_grad()
-                outputs = model(inputs)
+        #     n_samples = batch_data["image"].size(0)
+        #     for m in range(0,batch_data["image"].size(0),2):
+        #         step += 2
+        #         inputs, labels = (
+        #             batch_data["image"][m:(m+2)].to(device),
+        #             batch_data["label"][m:(m+2)].type(torch.LongTensor).to(device))
+        #         optimizer.zero_grad()
+        #         outputs = model(inputs)
                 
-                #Dice loss
-                loss1 = loss_function(outputs,labels)
+        #         #Dice loss
+        #         loss1 = loss_function(outputs,labels)
                 
-                #Focal loss
-                ce_loss = nn.CrossEntropyLoss(reduction='none')
-                ce = ce_loss((outputs),torch.squeeze(labels,dim=1))
-                gamma = 2.0
-                pt = torch.exp(-ce)
-                f_loss = 1*(1-pt)**gamma * ce 
-                loss2=f_loss
-                loss2 = torch.mean(loss2)
-                loss = 0.5*loss1+loss2              
+        #         #Focal loss
+        #         ce_loss = nn.CrossEntropyLoss(reduction='none')
+        #         ce = ce_loss((outputs),torch.squeeze(labels,dim=1))
+        #         gamma = 2.0
+        #         pt = torch.exp(-ce)
+        #         f_loss = 1*(1-pt)**gamma * ce 
+        #         loss2=f_loss
+        #         loss2 = torch.mean(loss2)
+        #         loss = 0.5*loss1+loss2              
                 
-                loss.backward()
-                optimizer.step()
+        #         loss.backward()
+        #         optimizer.step()
                 
-                epoch_loss += loss.item()
-                if step%100 == 0:
-                    step_print = int(step/2)
-                    print(f"{step_print}/{(len(train_ds)*n_samples) // (train_loader.batch_size*2)}, train_loss: {loss.item():.4f}")
+        #         epoch_loss += loss.item()
+        #         if step%100 == 0:
+        #             step_print = int(step/2)
+        #             print(f"{step_print}/{(len(train_ds)*n_samples) // (train_loader.batch_size*2)}, train_loss: {loss.item():.4f}")
 
-        epoch_loss /= step_print
-        epoch_loss_values.append(epoch_loss)
-        print(f"epoch {epoch + 1} average loss: {epoch_loss:.4f}")
+        # epoch_loss /= step_print
+        # epoch_loss_values.append(epoch_loss)
+        # print(f"epoch {epoch + 1} average loss: {epoch_loss:.4f}")
         
         if (epoch + 1) % val_interval == 0:
             model.eval()
