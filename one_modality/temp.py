@@ -49,12 +49,6 @@ def main(args):
         f.write(' '.join(sys.argv) + '\n')
         f.write('--------------------------------\n')
 
-    # seed_val = args.seed
-    # random.seed(seed_val)
-    # np.random.seed(seed_val)
-    # torch.manual_seed(seed_val)
-    # torch.cuda.manual_seed_all(seed_val)
-    # Choose device
     device = get_default_device()
 
     root_dir = args.path_save  # Path where the trained model is located
@@ -67,11 +61,11 @@ def main(args):
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
     
     #indices = np.random.permutation(N)
-    indices = np.asarray([3, 7, 6, 2, 10, 4, 1, 13, 0, 14, 9, 8, 12, 11, 5])
-    # print(indices)
-    # The overall number of patients in the training set is 15
-    v=indices[:3]
-    t=indices[3:]
+    # indices = np.asarray([3, 7, 6, 2, 10, 4, 1, 13, 0, 14, 9, 8, 12, 11, 5])
+
+    indices = np.arange(N)
+    v=indices[:]
+    #v=indices[:3]
 
     val_files=[]
     for j in v:
@@ -81,9 +75,6 @@ def main(args):
     val_transforms = Compose(
     [
         LoadNiftid(keys=["image", "label"]),
-        
-        #SqueezeDimd(keys=["flair", "mprage"], dim=-1),
-        
         AddChanneld(keys=["image","label"]),
         Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
         NormalizeIntensityd(keys=["image"], nonzero=True),
@@ -91,17 +82,9 @@ def main(args):
     ]
     )
 
-    #%%
-    # train_ds = CacheDataset(data=train_files, transform=train_transforms, cache_rate=0.5, num_workers=0)
-    # train_loader = DataLoader(train_ds, batch_size=1, shuffle=True, num_workers=0)
-
     val_ds = CacheDataset(data=val_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
-    # val_train_ds = CacheDataset(data=train_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
-
     val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
-    # val_train_loader = DataLoader(val_train_ds, batch_size=1, num_workers=0)
-  
-    # device = torch.device("cuda:0")
+
     model = UNet(
     dimensions=3,
     in_channels=1,
@@ -109,11 +92,7 @@ def main(args):
     channels=(32, 64, 128, 256, 512),
     strides=(2, 2, 2, 2),
     num_res_units=0).to(device)
-    # loss_function = DiceLoss(to_onehot_y=True, softmax=True, sigmoid=False,
-    #                          include_background=False)
 
-    # optimizer = torch.optim.Adam(model.parameters(), args.learning_rate)
-    # Load trained model 
     model.load_state_dict(torch.load(os.path.join(root_dir, "Best_model_finetuning.pth")))
     
     act = Activations(softmax=True)
