@@ -49,11 +49,11 @@ def main(args):
         f.write(' '.join(sys.argv) + '\n')
         f.write('--------------------------------\n')
 
-    seed_val = args.seed
-    random.seed(seed_val)
-    np.random.seed(seed_val)
-    torch.manual_seed(seed_val)
-    torch.cuda.manual_seed_all(seed_val)
+    # seed_val = args.seed
+    # random.seed(seed_val)
+    # np.random.seed(seed_val)
+    # torch.manual_seed(seed_val)
+    # torch.cuda.manual_seed_all(seed_val)
     # Choose device
     device = get_default_device()
 
@@ -73,41 +73,11 @@ def main(args):
     v=indices[:3]
     t=indices[3:]
 
-
-    train_files=[]
     val_files=[]
-    for i in t:
-        train_files = train_files + [{"image": fl,"label": seg} for fl, seg in zip(flair[i:i+1], segs[i:i+1])]
     for j in v:
         val_files = val_files + [{"image": fl,"label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
-    print("Training cases:", len(train_files))
     print("Validation cases:", len(val_files))
-    
-    # The below set of transformations perform the data augmentation
 
-    # train_transforms = Compose(
-    # [
-    #     LoadNiftid(keys=["image","label"]),
-        
-    #     #SqueezeDimd(keys=["flair", "mprage"], dim=-1),
-        
-    #     AddChanneld(keys=["image","label"]),
-    #     Spacingd(keys=["image","label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-    #     NormalizeIntensityd(keys=["image"], nonzero=True),
-    #     RandShiftIntensityd(keys="image",offsets=0.1,prob=1.0),
-    #     RandScaleIntensityd(keys="image",factors=0.1,prob=1.0),
-    #     RandCropByPosNegLabeld(keys=["image", "label"],label_key="label",spatial_size=(128, 128, 128),
-    #         pos=4,neg=1,num_samples=32,image_key="image"),
-    #     RandSpatialCropd(keys=["image", "label"], roi_size=(96,96,96), random_center=True, random_size=False),
-    #     RandFlipd (keys=["image", "label"],prob=0.5,spatial_axis=(0,1,2)),
-    #     RandRotate90d (keys=["image", "label"],prob=0.5,spatial_axes=(0,1)),
-    #     RandRotate90d (keys=["image", "label"],prob=0.5,spatial_axes=(1,2)),
-    #     RandRotate90d (keys=["image", "label"],prob=0.5,spatial_axes=(0,2)),
-    #     RandAffined(keys=['image', 'label'], mode=('bilinear', 'nearest'), prob=1.0, spatial_size=(96, 96, 96),
-    #                  rotate_range=(np.pi/12, np.pi/12, np.pi/12), scale_range=(0.1, 0.1, 0.1),padding_mode='border'),
-    #     ToTensord(keys=["image", "label"]),
-    # ]
-    # )
     val_transforms = Compose(
     [
         LoadNiftid(keys=["image", "label"]),
@@ -146,59 +116,10 @@ def main(args):
     # Load trained model 
     model.load_state_dict(torch.load(os.path.join(root_dir, "Best_model_finetuning.pth")))
     
-    # epoch_num = args.n_epochs
-    # val_interval = 5
-    # best_metric = -1
-    # best_metric_epoch = -1
-    # epoch_loss_values = list()
-    # metric_values = list()
-    # metric_values_train = list()
     act = Activations(softmax=True)
     thresh = 0.4
 
-    # for epoch in range(epoch_num):
-        # print("-" * 10)
-        # print(f"epoch {epoch + 1}/{epoch_num}")
-        # model.train()
-        # epoch_loss = 0
-        # step = 0
-        # for batch_data in train_loader:
 
-        #     n_samples = batch_data["image"].size(0)
-        #     for m in range(0,batch_data["image"].size(0),2):
-        #         step += 2
-        #         inputs, labels = (
-        #             batch_data["image"][m:(m+2)].to(device),
-        #             batch_data["label"][m:(m+2)].type(torch.LongTensor).to(device))
-        #         optimizer.zero_grad()
-        #         outputs = model(inputs)
-                
-        #         #Dice loss
-        #         loss1 = loss_function(outputs,labels)
-                
-        #         #Focal loss
-        #         ce_loss = nn.CrossEntropyLoss(reduction='none')
-        #         ce = ce_loss((outputs),torch.squeeze(labels,dim=1))
-        #         gamma = 2.0
-        #         pt = torch.exp(-ce)
-        #         f_loss = 1*(1-pt)**gamma * ce 
-        #         loss2=f_loss
-        #         loss2 = torch.mean(loss2)
-        #         loss = 0.5*loss1+loss2              
-                
-        #         loss.backward()
-        #         optimizer.step()
-                
-        #         epoch_loss += loss.item()
-        #         if step%100 == 0:
-        #             step_print = int(step/2)
-        #             print(f"{step_print}/{(len(train_ds)*n_samples) // (train_loader.batch_size*2)}, train_loss: {loss.item():.4f}")
-
-        # epoch_loss /= step_print
-        # epoch_loss_values.append(epoch_loss)
-        # print(f"epoch {epoch + 1} average loss: {epoch_loss:.4f}")
-        
-        # if (epoch + 1) % val_interval == 0:
     model.eval()
     with torch.no_grad():
         metric_sum = 0.0
