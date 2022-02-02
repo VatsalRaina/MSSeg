@@ -115,30 +115,55 @@ def main(args):
     with torch.no_grad():
         metric_sum = 0.0
         metric_count = 0
-        for batch_data in val_loader:
-            inputs, gt  = (
-                    batch_data["image"].to(device),#.unsqueeze(0),
-                     batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
-            roi_size = (96, 96, 96)
-            sw_batch_size = 4
 
-            outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-            outputs_o = (act(outputs))
-            outputs = act(outputs).cpu().numpy()
-            outputs = np.squeeze(outputs[0,1])       
+
+        # for batch_data in val_loader:
+        #     inputs, gt  = (
+        #             batch_data["image"].to(device),#.unsqueeze(0),
+        #              batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
+        #     roi_size = (96, 96, 96)
+        #     sw_batch_size = 4
+
+        #     outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+        #     outputs_o = (act(outputs))
+        #     outputs = act(outputs).cpu().numpy()
+        #     outputs = np.squeeze(outputs[0,1])       
 
             
-            outputs[outputs>th]=1
-            outputs[outputs<th]=0
-            seg= np.squeeze(outputs)
+        #     outputs[outputs>th]=1
+        #     outputs[outputs<th]=0
+        #     seg= np.squeeze(outputs)
   
-            val_labels = gt.cpu().numpy()
+        #     val_labels = gt.cpu().numpy()
+        #     gt = np.squeeze(val_labels)
+        #     value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+        #     # print(value)
+        #     metric_count += 1
+        #     metric_sum += value.sum().item()
+        # metric = metric_sum / metric_count
+
+        for val_data in val_loader:
+            val_inputs, val_labels = (
+                        val_data["image"].to(device),
+                        val_data["label"].to(device),
+                        )
+            roi_size = (96, 96, 96)
+            sw_batch_size = 4
+            val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model,mode='gaussian')
+            
+            val_labels = val_labels.cpu().numpy()
             gt = np.squeeze(val_labels)
+            val_outputs = act(val_outputs).cpu().numpy()
+            seg= np.squeeze(val_outputs[0,1])
+            seg[seg>th]=1
+            seg[seg<th]=0
             value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-            # print(value)
+
             metric_count += 1
             metric_sum += value.sum().item()
         metric = metric_sum / metric_count
+
+
         print("Dice score:", metric)
 
         #     """
