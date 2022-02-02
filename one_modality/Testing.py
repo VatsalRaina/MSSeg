@@ -116,80 +116,53 @@ def main(args):
     with torch.no_grad():
         metric_sum = 0.0
         metric_count = 0
-
-
-        # for batch_data in val_loader:
-        #     inputs, gt  = (
-        #             batch_data["image"].to(device),#.unsqueeze(0),
-        #              batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
-        #     roi_size = (96, 96, 96)
-        #     sw_batch_size = 4
-
-        #     outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-        #     outputs_o = (act(outputs))
-        #     outputs = act(outputs).cpu().numpy()
-        #     outputs = np.squeeze(outputs[0,1])       
-
-            
-        #     outputs[outputs>th]=1
-        #     outputs[outputs<th]=0
-        #     seg= np.squeeze(outputs)
-  
-        #     val_labels = gt.cpu().numpy()
-        #     gt = np.squeeze(val_labels)
-        #     value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-        #     # print(value)
-        #     metric_count += 1
-        #     metric_sum += value.sum().item()
-        # metric = metric_sum / metric_count
-
-        for val_data in val_loader:
-            val_inputs, val_labels = (
-                        val_data["image"].to(device),
-                        val_data["label"].to(device),
-                        )
+        for batch_data in val_loader:
+            inputs, gt  = (
+                    batch_data["image"].to(device),#.unsqueeze(0),
+                     batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
             roi_size = (96, 96, 96)
             sw_batch_size = 4
-            val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model,mode='gaussian')
-            
-            val_labels = val_labels.cpu().numpy()
-            gt = np.squeeze(val_labels)
-            val_outputs = act(val_outputs).cpu().numpy()
-            seg= np.squeeze(val_outputs[0,1])
-            seg[seg>th]=1
-            seg[seg<th]=0
-            value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
 
+            outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+            outputs_o = (act(outputs))
+            outputs = act(outputs).cpu().numpy()
+            outputs = np.squeeze(outputs[0,1])       
+
+            
+            outputs[outputs>th]=1
+            outputs[outputs<th]=0
+            seg= np.squeeze(outputs)
+  
+            val_labels = gt.cpu().numpy()
+            gt = np.squeeze(val_labels)
+            value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+            # print(value)
+            metric_count += 1
+            metric_sum += value.sum().item()
+
+            """
+            Remove connected components smaller than 10 voxels
+            """
+            l_min = 9
+            labeled_seg, num_labels = ndimage.label(seg)
+            label_list = np.unique(labeled_seg)
+            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
+
+            seg2 = np.zeros_like(seg)
+            for l in range(len(num_elements_by_lesion)):
+                if num_elements_by_lesion[l] > l_min:
+            # assign voxels to output
+                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+                    seg2[current_voxels[:, 0],
+                        current_voxels[:, 1],
+                        current_voxels[:, 2]] = 1
+            seg=np.copy(seg2) 
+ 
+            value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
             metric_count += 1
             metric_sum += value.sum().item()
         metric = metric_sum / metric_count
-
-
         print("Dice score:", metric)
-
-        #     """
-        #     Remove connected components smaller than 10 voxels
-        #     """
-        #     l_min = 9
-        #     labeled_seg, num_labels = ndimage.label(seg)
-        #     label_list = np.unique(labeled_seg)
-        #     num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
-
-        #     seg2 = np.zeros_like(seg)
-        #     for l in range(len(num_elements_by_lesion)):
-        #         if num_elements_by_lesion[l] > l_min:
-        #     # assign voxels to output
-        #             current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
-        #             seg2[current_voxels[:, 0],
-        #                 current_voxels[:, 1],
-        #                 current_voxels[:, 2]] = 1
-        #     seg=np.copy(seg2) 
- 
-        #     value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-        #     metric_count += 1
-        #     metric_sum += value.sum().item()
-        # metric = metric_sum / metric_count
-        # print("Dice score:", metric)
             
             
     #         name_patient= os.path.basename(os.path.dirname(test_files[subject]["mprage"]))

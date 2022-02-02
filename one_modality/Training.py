@@ -67,10 +67,10 @@ def main(args):
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
     
     #indices = np.random.permutation(N)
-    indices = np.asarray([3, 7, 6, 2, 10, 4, 1, 13, 0, 14, 9, 8, 12, 11, 5])
+    indices = np.asarray([0, 5, 10, 1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 14])
     # print(indices)
     # The overall number of patients in the training set is 15
-    v=indices[:3]
+    v=indices[:3]   # So validation patients are those with numbers 1, 6 and 11 (python index is one less)
     t=indices[3:]
 
 
@@ -224,29 +224,29 @@ def main(args):
                     metric_sum += value.sum().item()
                 metric = metric_sum / metric_count
                 metric_values.append(metric)
-                metric_sum_train = 0.0
-                metric_count_train = 0
-                for train_data in val_train_loader:
-                    train_inputs, train_labels = (
-                                train_data["image"].to(device),
-                                train_data["label"].to(device),
-                                )
-                    roi_size = (96, 96, 96)
-                    sw_batch_size = 4
-                    train_outputs = sliding_window_inference(train_inputs, roi_size, sw_batch_size, model,mode='gaussian')
+                # metric_sum_train = 0.0
+                # metric_count_train = 0
+                # for train_data in val_train_loader:
+                #     train_inputs, train_labels = (
+                #                 train_data["image"].to(device),
+                #                 train_data["label"].to(device),
+                #                 )
+                #     roi_size = (96, 96, 96)
+                #     sw_batch_size = 4
+                #     train_outputs = sliding_window_inference(train_inputs, roi_size, sw_batch_size, model,mode='gaussian')
                     
-                    train_labels = train_labels.cpu().numpy()
-                    gt = np.squeeze(train_labels)
-                    train_outputs = act(train_outputs).cpu().numpy()
-                    seg= np.squeeze(train_outputs[0,1])
-                    seg[seg>thresh]=1
-                    seg[seg<thresh]=0
-                    value_train = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+                #     train_labels = train_labels.cpu().numpy()
+                #     gt = np.squeeze(train_labels)
+                #     train_outputs = act(train_outputs).cpu().numpy()
+                #     seg= np.squeeze(train_outputs[0,1])
+                #     seg[seg>thresh]=1
+                #     seg[seg<thresh]=0
+                #     value_train = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                     
-                    metric_count_train += 1
-                    metric_sum_train += value_train.sum().item()    
-                metric_train = metric_sum_train / metric_count_train
-                metric_values_train.append(metric_train)
+                #     metric_count_train += 1
+                #     metric_sum_train += value_train.sum().item()    
+                # metric_train = metric_sum_train / metric_count_train
+                # metric_values_train.append(metric_train)
                 if metric > best_metric:
                     best_metric = metric
                     best_metric_epoch = epoch + 1
@@ -255,22 +255,7 @@ def main(args):
                 print(f"current epoch: {epoch + 1} current mean dice: {metric:.4f}"
                                     f"\nbest mean dice: {best_metric:.4f} at epoch: {best_metric_epoch}"
                                     )
-                plt.figure("train", (12, 6))
-                plt.subplot(1, 2, 1)
-                plt.title("Epoch Average Train Loss")
-                x = [i + 1 for i in range(len(epoch_loss_values))]
-                y = epoch_loss_values
-                plt.xlabel("epoch")
-                plt.plot(x, y)
-                plt.subplot(1, 2, 2)
-                plt.title("Val and Train Mean Dice")
-                x = [val_interval * (i + 1) for i in range(len(metric_values))]
-                y = metric_values
-                y1 = metric_values_train
-                plt.xlabel("epoch")
-                plt.plot(x, y)
-                plt.plot(x, y1)
-                plt.show()     
+ 
           
 #%%
 if __name__ == "__main__":
