@@ -67,6 +67,7 @@ def main(args):
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
     
     indices = np.random.permutation(N)
+    print(indices)
     # The overall number of patients in the training set is 15
     v=indices[:3]
     t=indices[3:]
