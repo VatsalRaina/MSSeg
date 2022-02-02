@@ -61,8 +61,9 @@ def main(args):
 
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
     
-    np.random.seed(111)
-    indices = np.random.permutation(N)
+    # np.random.seed(111)
+    # indices = np.random.permutation(N)
+    indices = np.arange(N)
     v=indices[:]
 
     test_files=[]
