@@ -27,8 +27,9 @@ from scipy import ndimage
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
+parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
-parser.add_argument('--path_model', type=str, default='', help='Specify the path to the trained model')
+parser.add_argument('--path_model', type=str, default='', help='Specify the dir to al the trained models')
 
 
 # Set device
@@ -98,6 +99,7 @@ def main(args):
     val_ds = CacheDataset(data=test_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
     val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
 
+
     model = UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
                   strides=(2, 2, 2, 2),num_res_units=0).to(device)
      
@@ -133,12 +135,12 @@ def main(args):
             outputs[outputs<th]=0
             seg= np.squeeze(outputs)
   
-            # val_labels = gt.cpu().numpy()
-            # gt = np.squeeze(val_labels)
-            # value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-            # # print(value)
-            # metric_count += 1
-            # metric_sum += value.sum().item()
+            val_labels = gt.cpu().numpy()
+            gt = np.squeeze(val_labels)
+            value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+            # print(value)
+            metric_count += 1
+            metric_sum += value.sum().item()
 
             """
             Remove connected components smaller than 10 voxels
