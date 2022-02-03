@@ -165,7 +165,7 @@ def main(args):
 
             im_sum = np.sum(seg) + np.sum(gt)
             if im_sum == 0:
-                value = 1.0
+                value = (1.0)
             else:
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
             metric_count += 1
