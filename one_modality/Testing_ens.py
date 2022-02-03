@@ -110,7 +110,7 @@ def main(args):
     act = Activations(softmax=True)
     
     for i, model in enumerate(models):
-        model.load_state_dict(torch.load(root_dir + "seed" + str(i) + "/Best_model_finetuning.pth"))
+        model.load_state_dict(torch.load(root_dir + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
         model.eval()
 
     print()
@@ -144,10 +144,6 @@ def main(args):
   
             val_labels = gt.cpu().numpy()
             gt = np.squeeze(val_labels)
-            value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-            # print(value)
-            metric_count += 1
-            metric_sum += value.sum().item()
 
             """
             Remove connected components smaller than 10 voxels
