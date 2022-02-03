@@ -99,22 +99,26 @@ def main(args):
     val_ds = CacheDataset(data=test_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
     val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
 
+    K = args.num_models
 
-    model = UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
-                  strides=(2, 2, 2, 2),num_res_units=0).to(device)
+    models = []
+    for i in range(K):
+        models.append(UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
+                    strides=(2, 2, 2, 2),num_res_units=0).to(device))
      
 
     act = Activations(softmax=True)
     
-    subject=0
-    model.load_state_dict(torch.load(os.path.join(root_dir, "Best_model_finetuning.pth")))
-    
+    for i, model in enumerate(models):
+        model.load_state_dict(torch.load(root_dir + "seed" + str(i) + "/Best_model_finetuning.pth"))
+        model.eval()
+
     print()
     print('Running the inference, please wait... ')
     
     th = args.threshold
 
-    model.eval()
+    
     with torch.no_grad():
         metric_sum = 0.0
         metric_count = 0
@@ -125,11 +129,14 @@ def main(args):
             roi_size = (96, 96, 96)
             sw_batch_size = 4
 
-            outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-            outputs_o = (act(outputs))
-            outputs = act(outputs).cpu().numpy()
-            outputs = np.squeeze(outputs[0,1])       
-
+            all_outputs = []
+            for model in models:
+                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+                outputs = act(outputs).cpu().numpy()
+                outputs = np.squeeze(outputs[0,1])
+                all_outputs.append(outputs)
+            all_outputs = np.asarray(all_outputs)
+            outputs = np.mean(all_outputs, axis=0)
             
             outputs[outputs>th]=1
             outputs[outputs<th]=0
