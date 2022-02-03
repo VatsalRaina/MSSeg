@@ -133,8 +133,9 @@ def main(args):
             outputs[outputs<th]=0
             seg= np.squeeze(outputs)
   
-            # val_labels = gt.cpu().numpy()
-            # gt = np.squeeze(val_labels)
+            val_labels = gt.cpu().numpy()
+            gt = np.squeeze(val_labels)
+            
             # value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
             # # print(value)
             # metric_count += 1
