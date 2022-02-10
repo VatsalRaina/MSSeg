@@ -161,7 +161,7 @@ def main(args):
         ]
         )
             
-        return val_untransforms(seg_unmapped)
+        return np.asarray(val_untransforms(seg_unmapped))
 
     metric_sum = 0.0
     metric_count = 0
