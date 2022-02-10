@@ -154,14 +154,17 @@ def main(args):
 
     def mapped(seg_unmapped, res):
 
+        data = [{"image:", seg_unmapped}]
         val_untransforms = Compose(
         [
-            AddChannel(),
-            Spacing(pixdim=res, mode="bilinear"),
+            AddChanneld(keys=["image"]),
+            Spacingd(keys=["image"], pixdim=res, mode=["bilinear"]),
         ]
         )
             
-        return np.asarray(val_untransforms(seg_unmapped))
+        result = val_untransforms(data)[0]["image"]
+        print(type(result))
+        return result
 
     metric_sum = 0.0
     metric_count = 0
@@ -169,7 +172,7 @@ def main(args):
 
         outputs = mapped(seg_unmapped, res)
 
-        print(outputs.shape)
+        # print(outputs.shape)
 
         outputs[outputs>th]=1
         outputs[outputs<th]=0
