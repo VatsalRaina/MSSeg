@@ -17,8 +17,8 @@ from monai.metrics import compute_meandice, DiceMetric
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 from monai.transforms import (
-    AddChanneld,Compose,CropForegroundd,LoadNiftid,Orientationd,RandCropByPosNegLabeld,
-    ScaleIntensityRanged,Spacingd,ToTensord,ConcatItemsd,NormalizeIntensityd, RandFlipd,
+    AddChanneld,AddChannel,Compose,CropForegroundd,LoadNiftid,Orientationd,RandCropByPosNegLabeld,
+    ScaleIntensityRanged,Spacingd,Spacing,ToTensord,ConcatItemsd,NormalizeIntensityd, RandFlipd,
     RandRotate90d,RandShiftIntensityd,RandAffined,RandSpatialCropd, AsDiscrete, Activations)
 from monai.utils import first, set_determinism
 from monai.data import write_nifti, create_file_basename, NiftiDataset
@@ -48,6 +48,22 @@ def main(args):
         f.write(' '.join(sys.argv) + '\n')
         f.write('--------------------------------\n')
 
+    # THIS MUST BE CHANGED EVERY TIME OR NEEDS TO BE PUT INTO COMMAND LINE ARGUMENT
+    
+    # MSSEG dev set
+    verio = [(1.1, 0.5, 0.5)]
+    aera = [(1.25, 1.03, 1.03)]
+    ingenia = [(0.7, 0.74, 0.74)]
+    resolutions_original = verio + aera + ingenia
+
+    # # MSSEG test set
+    # verio = [(1.1, 0.5, 0.5)] * 10
+    # discovery = [(0.9, 0.47, 0.47)] * 8
+    # aera = [(1.25, 1.03, 1.03)] * 10
+    # ingenia = [(0.7, 0.74, 0.74)] * 10
+    # resolutions_original = verio + discovery + aera + ingenia
+    
+
     # Choose device
     device = get_default_device()
 
@@ -56,7 +72,7 @@ def main(args):
     flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
     segs = sorted(glob(os.path.join(path_data, "*gt.nii")),
-                  key=lambda i: int(re.sub('\D', '', i)))        
+                  key=lambda i: int(re.sub('\D', '', i)))  
 
 
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
@@ -68,7 +84,7 @@ def main(args):
 
     test_files=[]
     for j in v:
-        test_files = test_files + [{"image": fl, "label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
+        test_files = test_files + [{"image": fl, "label": seg, "label_orig": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
 
     print("Testing cases:", len(test_files))
     
@@ -86,11 +102,11 @@ def main(args):
    
     val_transforms = Compose(
     [
-        LoadNiftid(keys=["image", "label"]),
-        AddChanneld(keys=["image","label"]),
+        LoadNiftid(keys=["image", "label", "label_orig"]),
+        AddChanneld(keys=["image","label", "label_orig"]),
         Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
         NormalizeIntensityd(keys=["image"], nonzero=True),
-        ToTensord(keys=["image", "label"]),
+        ToTensord(keys=["image", "label", "label_orig"]),
     ]
     )
     #%%
@@ -114,12 +130,13 @@ def main(args):
 
     model.eval()
     with torch.no_grad():
-        metric_sum = 0.0
-        metric_count = 0
+        all_gts = []
+        all_predictions = []
         for batch_data in val_loader:
-            inputs, gt  = (
+            inputs, gt, gt_orig  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
-                     batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
+                    batch_data["label"].type(torch.LongTensor).to(device),#.unsqueeze(0),)
+                    batch_data["label_orig"].type(torch.LongTensor).to(device),)
             roi_size = (96, 96, 96)
             sw_batch_size = 4
 
@@ -136,10 +153,6 @@ def main(args):
             val_labels = gt.cpu().numpy()
             gt = np.squeeze(val_labels)
             
-            # value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-            # # print(value)
-            # metric_count += 1
-            # metric_sum += value.sum().item()
 
             """
             Remove connected components smaller than 10 voxels
@@ -159,33 +172,38 @@ def main(args):
                         current_voxels[:, 2]] = 1
             seg=np.copy(seg2) 
  
-            value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-            metric_count += 1
-            metric_sum += value.sum().item()
-        metric = metric_sum / metric_count
-        print("Dice score:", metric)
-            
-            
-    #         name_patient= os.path.basename(os.path.dirname(test_files[subject]["mprage"]))
-    #         subject+=1
-    #         meta_data = batch_data['mprage_meta_dict']
-    #         for i, data in enumerate(outputs_o):  
-    #             out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
-                 
+            val_labels = gt_orig.cpu().numpy()
+            gt = np.squeeze(val_labels)
 
-    #         original_affine = out_meta.get("original_affine", None) if out_meta else None
-    #         affine = out_meta.get("affine", None) if out_meta else None
-    #         spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
-              
-    #         data2=np.copy(seg)
-    #         name = create_file_basename("subject_"+str(name_patient)+".nii.gz","binary_seg",root_dir)
-    #         write_nifti(data2,name,affine=affine,target_affine=original_affine,
-    #                     output_spatial_shape=spatial_shape)        
-    
-    # print()
-    # print("Inference completed!")
-    # print("The segmentations have been saved in the following folder: ", os.path.join(root_dir,"binary_seg"))
-    # print("-------------------------------------------------------------------")
+            all_gts.append(gt)
+            all_predictions.append()
+
+
+
+    def mapped(seg_unmapped, res):
+
+        val_untransforms = Compose(
+        [
+            AddChannel(),
+            Spacing(pixdim=res, mode="bilinear"),
+        ]
+        )
+            
+        return val_untransforms(seg_unmapped)
+
+    metric_sum = 0.0
+    metric_count = 0
+    for gt, seg_unmapped, res in zip(all_gts, all_predictions, resolutions_original):
+        seg = mapped(seg_unmapped, res)
+
+        value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+        metric_count += 1
+        metric_sum += value.sum().item()
+    metric = metric_sum / metric_count
+    print("Dice score:", metric)
+            
+            
+
     
 #%%
 if __name__ == "__main__":
