@@ -25,6 +25,9 @@ from monai.data import write_nifti, create_file_basename, NiftiDataset
 import numpy as np
 from scipy import ndimage
 
+import matplotlib.pyplot as plt
+import seaborn as sns; sns.set_theme()
+
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
@@ -119,6 +122,9 @@ def main(args):
     th = args.threshold
 
     
+    all_predictions = []
+    all_groundTruths = []
+
     with torch.no_grad():
         metric_sum = 0.0
         metric_count = 0
@@ -163,6 +169,9 @@ def main(args):
                         current_voxels[:, 2]] = 1
             seg=np.copy(seg2) 
 
+            all_predictions.append(seg)
+            all_groundTruths.append(gt)
+
             im_sum = np.sum(seg) + np.sum(gt)
             if im_sum == 0:
                 value = 1.0
@@ -175,28 +184,21 @@ def main(args):
         metric = metric_sum / metric_count
         print("Dice score:", metric)
             
-            
-    #         name_patient= os.path.basename(os.path.dirname(test_files[subject]["mprage"]))
-    #         subject+=1
-    #         meta_data = batch_data['mprage_meta_dict']
-    #         for i, data in enumerate(outputs_o):  
-    #             out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
-                 
+    # Plot the first ground truth and corresponding prediction at a random slice
+    gt = all_groundTruths[0]
+    pred = all_predictions[0]
+    gt_slice = gt[100,:,:]
+    pred_slice = pred[100,:,:]
 
-    #         original_affine = out_meta.get("original_affine", None) if out_meta else None
-    #         affine = out_meta.get("affine", None) if out_meta else None
-    #         spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
-              
-    #         data2=np.copy(seg)
-    #         name = create_file_basename("subject_"+str(name_patient)+".nii.gz","binary_seg",root_dir)
-    #         write_nifti(data2,name,affine=affine,target_affine=original_affine,
-    #                     output_spatial_shape=spatial_shape)        
-    
-    # print()
-    # print("Inference completed!")
-    # print("The segmentations have been saved in the following folder: ", os.path.join(root_dir,"binary_seg"))
-    # print("-------------------------------------------------------------------")
-    
+    sns.heatmap(gt_slice)
+    plt.savefig('gt.png')
+    plt.clf()
+
+    sns.heatmap(pred_slice)
+    plt.savefig('pred.png')
+    plt.clf()
+
+
 #%%
 if __name__ == "__main__":
     args = parser.parse_args()
