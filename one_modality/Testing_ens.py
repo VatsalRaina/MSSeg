@@ -124,6 +124,7 @@ def main(args):
     
     all_predictions = []
     all_groundTruths = []
+    all_uncs = []
 
     with torch.no_grad():
         metric_sum = 0.0
@@ -143,6 +144,9 @@ def main(args):
                 all_outputs.append(outputs)
             all_outputs = np.asarray(all_outputs)
             outputs = np.mean(all_outputs, axis=0)
+
+            # Get entropy of expected
+            uncs = outputs * np.log(outputs) + (1. - outputs) * np.log(1. - outputs)
             
             outputs[outputs>th]=1
             outputs[outputs<th]=0
@@ -171,6 +175,7 @@ def main(args):
 
             all_predictions.append(seg)
             all_groundTruths.append(gt)
+            all_uncs.append(uncs)
 
             im_sum = np.sum(seg) + np.sum(gt)
             if im_sum == 0:
@@ -185,10 +190,8 @@ def main(args):
         print("Dice score:", metric)
             
     # Plot the first ground truth and corresponding prediction at a random slice
-    gt = all_groundTruths[0]
-    pred = all_predictions[0]
-    gt_slice = gt[100,:,:]
-    pred_slice = pred[100,:,:]
+    gt, pred, unc = all_groundTruths[0], all_predictions[0], all_uncs[0]
+    gt_slice, pred_slice, unc_slice = gt[100,:,:], pred[100,:,:], unc[100,:,:]
 
     sns.heatmap(gt_slice)
     plt.savefig('gt.png')
@@ -198,6 +201,9 @@ def main(args):
     plt.savefig('pred.png')
     plt.clf()
 
+    sns.heatmap(unc_slice)
+    plt.savefig('unc.png')
+    plt.clf()
 
 #%%
 if __name__ == "__main__":
