@@ -154,7 +154,7 @@ def main(args):
 
     def mapped(seg_unmapped, res):
 
-        data = [{"image:" seg_unmapped}]
+        data = [{"image": seg_unmapped}]
         val_untransforms = Compose(
         [
             AddChanneld(keys=["image"]),
