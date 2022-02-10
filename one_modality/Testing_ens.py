@@ -146,7 +146,7 @@ def main(args):
             outputs = np.mean(all_outputs, axis=0)
 
             # Get entropy of expected
-            uncs = outputs * np.log(outputs) + (1. - outputs) * np.log(1. - outputs)
+            uncs = -1 * (outputs * np.log(outputs) + (1. - outputs) * np.log(1. - outputs))
             
             outputs[outputs>th]=1
             outputs[outputs<th]=0
