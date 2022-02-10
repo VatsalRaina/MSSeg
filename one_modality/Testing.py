@@ -145,40 +145,12 @@ def main(args):
             outputs = act(outputs).cpu().numpy()
             outputs = np.squeeze(outputs[0,1])       
 
-            
-            outputs[outputs>th]=1
-            outputs[outputs<th]=0
-            seg= np.squeeze(outputs)
-  
-            val_labels = gt.cpu().numpy()
-            gt = np.squeeze(val_labels)
-            
-
-            """
-            Remove connected components smaller than 10 voxels
-            """
-            l_min = 9
-            labeled_seg, num_labels = ndimage.label(seg)
-            label_list = np.unique(labeled_seg)
-            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
-
-            seg2 = np.zeros_like(seg)
-            for l in range(len(num_elements_by_lesion)):
-                if num_elements_by_lesion[l] > l_min:
-            # assign voxels to output
-                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
-                    seg2[current_voxels[:, 0],
-                        current_voxels[:, 1],
-                        current_voxels[:, 2]] = 1
-            seg=np.copy(seg2) 
- 
             val_labels = gt_orig.cpu().numpy()
             gt = np.squeeze(val_labels)
 
             all_gts.append(gt)
-            all_predictions.append(seg)
-
-
+            all_predictions.append(outputs)
+            
 
     def mapped(seg_unmapped, res):
 
@@ -194,7 +166,32 @@ def main(args):
     metric_sum = 0.0
     metric_count = 0
     for gt, seg_unmapped, res in zip(all_gts, all_predictions, resolutions_original):
-        seg = mapped(seg_unmapped, res)
+
+        outputs = mapped(seg_unmapped, res)
+
+        print(outputs.shape)
+
+        outputs[outputs>th]=1
+        outputs[outputs<th]=0
+        seg= np.squeeze(outputs)   
+
+        """
+        Remove connected components smaller than 10 voxels
+        """
+        l_min = 9
+        labeled_seg, num_labels = ndimage.label(seg)
+        label_list = np.unique(labeled_seg)
+        num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
+
+        seg2 = np.zeros_like(seg)
+        for l in range(len(num_elements_by_lesion)):
+            if num_elements_by_lesion[l] > l_min:
+        # assign voxels to output
+                current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+                seg2[current_voxels[:, 0],
+                    current_voxels[:, 1],
+                    current_voxels[:, 2]] = 1
+        seg=np.copy(seg2)
 
         value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
         metric_count += 1
