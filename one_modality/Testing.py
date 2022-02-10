@@ -176,7 +176,7 @@ def main(args):
             gt = np.squeeze(val_labels)
 
             all_gts.append(gt)
-            all_predictions.append()
+            all_predictions.append(seg)
 
 
 
