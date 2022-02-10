@@ -24,6 +24,7 @@ from monai.utils import first, set_determinism
 from monai.data import write_nifti, create_file_basename, NiftiDataset
 import numpy as np
 from scipy import ndimage
+import itertools
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
@@ -51,17 +52,17 @@ def main(args):
     # THIS MUST BE CHANGED EVERY TIME OR NEEDS TO BE PUT INTO COMMAND LINE ARGUMENT
     
     # MSSEG dev set
-    verio = [(1.1, 0.5, 0.5)]
-    aera = [(1.25, 1.03, 1.03)]
-    ingenia = [(0.7, 0.74, 0.74)]
-    resolutions_original = verio + aera + ingenia
+    verio = [(144,512,512)]
+    aera = [(128,224,256)]
+    ingenia = [(261,336,336)]
+    sizes_original = verio + aera + ingenia
 
     # # MSSEG test set
-    # verio = [(1.1, 0.5, 0.5)] * 10
-    # discovery = [(0.9, 0.47, 0.47)] * 8
-    # aera = [(1.25, 1.03, 1.03)] * 10
-    # ingenia = [(0.7, 0.74, 0.74)] * 10
-    # resolutions_original = verio + discovery + aera + ingenia
+    # verio = [(144,512,512)] * 10
+    # discovery = [(224,512,512)] * 8
+    # aera = [(128,224,256)] * 10
+    # ingenia = [(261,336,336)] * 10
+    # sizes_original = verio + discovery + aera + ingenia
     
 
     # Choose device
@@ -152,25 +153,34 @@ def main(args):
             all_predictions.append(outputs)
             
 
-    def mapped(seg_unmapped, res):
+    def resize_data(data, siz):
+        initial_size_x = data.shape[0]
+        initial_size_y = data.shape[1]
+        initial_size_z = data.shape[2]
 
-        data = [{"image": seg_unmapped}]
-        val_untransforms = Compose(
-        [
-            AddChanneld(keys=["image"]),
-            Spacingd(keys=["image"], pixdim=res, mode=["bilinear"]),
-        ]
-        )
-            
-        result = val_untransforms(data)[0]["image"]
-        print(type(result))
-        return result
+        new_size_x = siz[0]
+        new_size_y = siz[1]
+        new_size_z = siz[2]
+
+        delta_x = initial_size_x / new_size_x
+        delta_y = initial_size_y / new_size_y
+        delta_z = initial_size_z / new_size_z
+
+        new_data = np.zeros((new_size_x, new_size_y, new_size_z))
+
+        for x, y, z in itertools.product(range(new_size_x),
+                                        range(new_size_y),
+                                        range(new_size_z)):
+            new_data[x][y][z] = data[int(x * delta_x)][int(y * delta_y)][int(z * delta_z)]
+
+        return new_data
+
 
     metric_sum = 0.0
     metric_count = 0
-    for gt, seg_unmapped, res in zip(all_gts, all_predictions, resolutions_original):
+    for gt, seg_unmapped, siz in zip(all_gts, all_predictions, sizes_original):
 
-        outputs = mapped(seg_unmapped, res)
+        outputs = resize_data(seg_unmapped, siz)
 
         # print(outputs.shape)
 
