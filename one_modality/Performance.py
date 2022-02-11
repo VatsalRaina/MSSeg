@@ -53,13 +53,13 @@ def main(args):
     # Choose device
     device = get_default_device()
 
-    seg = sorted(glob(os.path.join(args.path_pred, "*.nii.gz")),
+    segs = sorted(glob(os.path.join(args.path_pred, "*.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    gt = sorted(glob(os.path.join(args.path_gt, "*gt.nii")),
+    gts = sorted(glob(os.path.join(args.path_gt, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))  
 
 
-    N = (len(seg)) 
+    N = (len(segs)) 
     
     # np.random.seed(111)
     # indices = np.random.permutation(N)
@@ -68,7 +68,7 @@ def main(args):
 
     test_files=[]
     for j in v:
-        test_files = test_files + [{"image": fl, "label": seg, "label_orig": seg} for fl, seg in zip(seg[j:j+1], gt[j:j+1])]
+        test_files = test_files + [{"seg": seg, "gt": gt} for seg, gt in zip(segs[j:j+1], gts[j:j+1])]
 
     print("Testing cases:", len(test_files))
     
@@ -88,7 +88,7 @@ def main(args):
     [
         LoadNiftid(keys=["seg", "gt"]),
         AddChanneld(keys=["seg","gt"]),
-        ToTensord(keys=["image", "label"]),
+        ToTensord(keys=["seg", "gt"]),
     ]
     )
     #%%

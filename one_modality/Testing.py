@@ -72,7 +72,7 @@ def main(args):
 
     test_files=[]
     for j in v:
-        test_files = test_files + [{"image": fl, "label": seg, "label_orig": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
+        test_files = test_files + [{"image": fl, "label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
 
     print("Testing cases:", len(test_files))
     
