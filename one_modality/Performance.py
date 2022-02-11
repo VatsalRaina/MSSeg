@@ -113,9 +113,14 @@ def main(args):
             gt = gt.cpu().numpy()
             gt = np.squeeze(gt)
 
-            value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+                metric_sum += value
+            else:
+                value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+                metric_sum += value.sum().item()
             metric_count += 1
-            metric_sum += value.sum().item()
 
         metric = metric_sum / metric_count
         print("Dice score:", metric)
