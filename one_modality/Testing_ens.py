@@ -33,6 +33,8 @@ parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for 
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the dir to al the trained models')
+parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the segmentations')
+
 
 
 # Set device
@@ -122,14 +124,14 @@ def main(args):
     th = args.threshold
 
     
-    all_predictions = []
-    all_groundTruths = []
-    all_uncs = []
+    # all_predictions = []
+    # all_groundTruths = []
+    # all_uncs = []
 
     with torch.no_grad():
         metric_sum = 0.0
         metric_count = 0
-        for batch_data in val_loader:
+        for count, batch_data in enumerate(val_loader):
             inputs, gt  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
                      batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
@@ -144,9 +146,10 @@ def main(args):
                 all_outputs.append(outputs)
             all_outputs = np.asarray(all_outputs)
             outputs = np.mean(all_outputs, axis=0)
+            outputs_o = (outputs)
 
             # Get entropy of expected
-            uncs = -1 * (outputs * np.log(outputs) + (1. - outputs) * np.log(1. - outputs))
+            # uncs = -1 * (outputs * np.log(outputs) + (1. - outputs) * np.log(1. - outputs))
             
             outputs[outputs>th]=1
             outputs[outputs<th]=0
@@ -173,9 +176,9 @@ def main(args):
                         current_voxels[:, 2]] = 1
             seg=np.copy(seg2) 
 
-            all_predictions.append(seg)
-            all_groundTruths.append(gt)
-            all_uncs.append(uncs)
+            # all_predictions.append(seg)
+            # all_groundTruths.append(gt)
+            # all_uncs.append(uncs)
 
             im_sum = np.sum(seg) + np.sum(gt)
             if im_sum == 0:
@@ -185,25 +188,40 @@ def main(args):
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                 metric_sum += value.sum().item()
             metric_count += 1
-            
+
+            # Save as predictions as nii file here in original space
+
+            meta_data = batch_data['image_meta_dict']
+            for i, data in enumerate(outputs_o):  
+                out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
+
+            original_affine = out_meta.get("original_affine", None) if out_meta else None
+            affine = out_meta.get("affine", None) if out_meta else None
+            spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
+              
+            data2=np.copy(seg)
+            name = args.path_save+str(count+1)+".nii.gz"
+            write_nifti(data2,name,affine=affine,target_affine=original_affine,
+                        output_spatial_shape=spatial_shape)     
+
         metric = metric_sum / metric_count
         print("Dice score:", metric)
             
-    # Plot the first ground truth and corresponding prediction at a random slice
-    gt, pred, unc = all_groundTruths[0], all_predictions[0], all_uncs[0]
-    gt_slice, pred_slice, unc_slice = gt[100,:,:], pred[100,:,:], unc[100,:,:]
+    # # Plot the first ground truth and corresponding prediction at a random slice
+    # gt, pred, unc = all_groundTruths[0], all_predictions[0], all_uncs[0]
+    # gt_slice, pred_slice, unc_slice = gt[100,:,:], pred[100,:,:], unc[100,:,:]
 
-    sns.heatmap(gt_slice)
-    plt.savefig('gt.png')
-    plt.clf()
+    # sns.heatmap(gt_slice)
+    # plt.savefig('gt.png')
+    # plt.clf()
 
-    sns.heatmap(pred_slice)
-    plt.savefig('pred.png')
-    plt.clf()
+    # sns.heatmap(pred_slice)
+    # plt.savefig('pred.png')
+    # plt.clf()
 
-    sns.heatmap(unc_slice)
-    plt.savefig('unc.png')
-    plt.clf()
+    # sns.heatmap(unc_slice)
+    # plt.savefig('unc.png')
+    # plt.clf()
 
 #%%
 if __name__ == "__main__":
