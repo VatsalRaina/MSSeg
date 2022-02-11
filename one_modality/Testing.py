@@ -30,6 +30,8 @@ parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the path to the trained model')
+parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the segmentations')
+
 
 
 # Set device
@@ -48,21 +50,6 @@ def main(args):
     with open('CMDs/train.cmd', 'a') as f:
         f.write(' '.join(sys.argv) + '\n')
         f.write('--------------------------------\n')
-
-    # THIS MUST BE CHANGED EVERY TIME OR NEEDS TO BE PUT INTO COMMAND LINE ARGUMENT
-    
-    # MSSEG dev set
-    verio = [(144,512,512)]
-    aera = [(128,224,256)]
-    ingenia = [(261,336,336)]
-    sizes_original = verio + aera + ingenia
-
-    # # MSSEG test set
-    # verio = [(144,512,512)] * 10
-    # discovery = [(224,512,512)] * 8
-    # aera = [(128,224,256)] * 10
-    # ingenia = [(261,336,336)] * 10
-    # sizes_original = verio + discovery + aera + ingenia
     
 
     # Choose device
@@ -103,11 +90,11 @@ def main(args):
    
     val_transforms = Compose(
     [
-        LoadNiftid(keys=["image", "label", "label_orig"]),
-        AddChanneld(keys=["image","label", "label_orig"]),
+        LoadNiftid(keys=["image", "label"]),
+        AddChanneld(keys=["image","label"]),
         Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
         NormalizeIntensityd(keys=["image"], nonzero=True),
-        ToTensord(keys=["image", "label", "label_orig"]),
+        ToTensord(keys=["image", "label"]),
     ]
     )
     #%%
@@ -130,14 +117,13 @@ def main(args):
     th = args.threshold
 
     model.eval()
+    metric_sum = 0.0
+    metric_count = 0
     with torch.no_grad():
-        all_gts = []
-        all_predictions = []
-        for batch_data in val_loader:
+        for count, batch_data in enumerate(val_loader):
             inputs, gt, gt_orig  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
-                    batch_data["label"].type(torch.LongTensor).to(device),#.unsqueeze(0),)
-                    batch_data["label_orig"].type(torch.LongTensor).to(device),)
+                    batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
             roi_size = (96, 96, 96)
             sw_batch_size = 4
 
@@ -149,68 +135,49 @@ def main(args):
             val_labels = gt_orig.cpu().numpy()
             gt = np.squeeze(val_labels)
 
-            all_gts.append(gt)
-            all_predictions.append(outputs)
-            
+            outputs[outputs>th]=1
+            outputs[outputs<th]=0
+            seg= np.squeeze(outputs)   
 
-    def resize_data(data, siz):
-        initial_size_x = data.shape[0]
-        initial_size_y = data.shape[1]
-        initial_size_z = data.shape[2]
+            """
+            Remove connected components smaller than 10 voxels
+            """
+            l_min = 9
+            labeled_seg, num_labels = ndimage.label(seg)
+            label_list = np.unique(labeled_seg)
+            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
 
-        new_size_x = siz[0]
-        new_size_y = siz[1]
-        new_size_z = siz[2]
+            seg2 = np.zeros_like(seg)
+            for l in range(len(num_elements_by_lesion)):
+                if num_elements_by_lesion[l] > l_min:
+            # assign voxels to output
+                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+                    seg2[current_voxels[:, 0],
+                        current_voxels[:, 1],
+                        current_voxels[:, 2]] = 1
+            seg=np.copy(seg2)
 
-        delta_x = initial_size_x / new_size_x
-        delta_y = initial_size_y / new_size_y
-        delta_z = initial_size_z / new_size_z
+            value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+            metric_count += 1
+            metric_sum += value.sum().item()
 
-        new_data = np.zeros((new_size_x, new_size_y, new_size_z))
+            # Save as predictions as nii file here in original space
 
-        for x, y, z in itertools.product(range(new_size_x),
-                                        range(new_size_y),
-                                        range(new_size_z)):
-            new_data[x][y][z] = data[int(x * delta_x)][int(y * delta_y)][int(z * delta_z)]
+            meta_data = batch_data['image_meta_dict']
+            for i, data in enumerate(outputs_o):  
+                out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
 
-        return new_data
+            original_affine = out_meta.get("original_affine", None) if out_meta else None
+            affine = out_meta.get("affine", None) if out_meta else None
+            spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
+              
+            data2=np.copy(seg)
+            name = create_file_basename(args.path_save+"subject_"+str(count+1)+".nii.gz","binary_seg",root_dir)
+            write_nifti(data2,name,affine=affine,target_affine=original_affine,
+                        output_spatial_shape=spatial_shape)        
 
-
-    metric_sum = 0.0
-    metric_count = 0
-    for gt, seg_unmapped, siz in zip(all_gts, all_predictions, sizes_original):
-
-        outputs = resize_data(seg_unmapped, siz)
-
-        # print(outputs.shape)
-
-        outputs[outputs>th]=1
-        outputs[outputs<th]=0
-        seg= np.squeeze(outputs)   
-
-        """
-        Remove connected components smaller than 10 voxels
-        """
-        l_min = 9
-        labeled_seg, num_labels = ndimage.label(seg)
-        label_list = np.unique(labeled_seg)
-        num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
-
-        seg2 = np.zeros_like(seg)
-        for l in range(len(num_elements_by_lesion)):
-            if num_elements_by_lesion[l] > l_min:
-        # assign voxels to output
-                current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
-                seg2[current_voxels[:, 0],
-                    current_voxels[:, 1],
-                    current_voxels[:, 2]] = 1
-        seg=np.copy(seg2)
-
-        value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-        metric_count += 1
-        metric_sum += value.sum().item()
-    metric = metric_sum / metric_count
-    print("Dice score:", metric)
+        metric = metric_sum / metric_count
+        print("Dice score:", metric)
             
             
 
