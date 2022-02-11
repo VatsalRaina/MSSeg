@@ -141,12 +141,12 @@ def main(args):
             all_outputs = []
             for model in models:
                 outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+                outputs_o = (act(outputs))
                 outputs = act(outputs).cpu().numpy()
                 outputs = np.squeeze(outputs[0,1])
                 all_outputs.append(outputs)
             all_outputs = np.asarray(all_outputs)
             outputs = np.mean(all_outputs, axis=0)
-            outputs_o = (outputs)
 
             # Get entropy of expected
             # uncs = -1 * (outputs * np.log(outputs) + (1. - outputs) * np.log(1. - outputs))
