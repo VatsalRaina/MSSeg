@@ -132,7 +132,7 @@ def main(args):
             outputs = act(outputs).cpu().numpy()
             outputs = np.squeeze(outputs[0,1])       
 
-            val_labels = gt_orig.cpu().numpy()
+            val_labels = gt.cpu().numpy()
             gt = np.squeeze(val_labels)
 
             outputs[outputs>th]=1
