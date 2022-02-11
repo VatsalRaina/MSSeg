@@ -121,7 +121,7 @@ def main(args):
     metric_count = 0
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
-            inputs, gt, gt_orig  = (
+            inputs, gt = (
                     batch_data["image"].to(device),#.unsqueeze(0),
                     batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
             roi_size = (96, 96, 96)
