@@ -172,7 +172,7 @@ def main(args):
             spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
               
             data2=np.copy(seg)
-            name = create_file_basename(args.path_save+"subject_"+str(count+1)+".nii.gz","binary_seg",root_dir)
+            name = args.path_save+"subject_"+str(count+1)+".nii.gz"
             write_nifti(data2,name,affine=affine,target_affine=original_affine,
                         output_spatial_shape=spatial_shape)        
 
