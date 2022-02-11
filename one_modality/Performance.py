@@ -99,8 +99,6 @@ def main(args):
     print()
     print('Running the inference, please wait... ')
     
-    th = args.threshold
-
     metric_sum = 0.0
     metric_count = 0
     with torch.no_grad():
