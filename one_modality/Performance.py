@@ -53,7 +53,7 @@ def main(args):
     # Choose device
     device = get_default_device()
 
-    seg = sorted(glob(os.path.join(args.path_pred, "*FLAIR.nii.gz")),
+    seg = sorted(glob(os.path.join(args.path_pred, "*.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
     gt = sorted(glob(os.path.join(args.path_gt, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))  
