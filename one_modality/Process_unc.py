@@ -195,7 +195,7 @@ def main(args):
             outputs = np.mean(all_outputs, axis=0)
 
             # Get all uncertainties
-            uncs = ensemble_uncertainties_classification( np.cat( (np.unsqueeze(all_outputs, axis=-1), np.unsqueeze(1.-all_outputs, axis=-1)), axis=-1) )
+            uncs = ensemble_uncertainties_classification( np.concatenate( (np.unsqueeze(all_outputs, axis=-1), np.unsqueeze(1.-all_outputs, axis=-1)), axis=-1) )
             
             outputs[outputs>th]=1
             outputs[outputs<th]=0
