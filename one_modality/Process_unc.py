@@ -247,14 +247,14 @@ def main(args):
                 print(unc_key, auc_dsc)
 
             # Get ideal values
-            auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()))
+            auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()), plot=False)
             print("Ideal", auc_dsc)
 
             # Get random values
             rand_uncs = np.arange(0, 1000, len(gt.flatten()))
             np.random.seed(0)
             np.random.shuffle(rand_uncs)
-            auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs)
+            auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs, plot=False)
             print("Random", auc_dsc)
 
 
