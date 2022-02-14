@@ -38,7 +38,7 @@ def ensemble_uncertainties_classification(probs, epsilon=1e-10):
 
     epkl = -np.sum(mean_probs * mean_lprobs, axis=-1) - exe
 
-    uncertainty = {'confidence': conf,
+    uncertainty = {'confidence': -1 * conf,
                    'entropy_of_expected': eoe,
                    'expected_entropy': exe,
                    'mutual_information': mutual_info,
