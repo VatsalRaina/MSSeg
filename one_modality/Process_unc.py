@@ -28,13 +28,13 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set_theme()
 
+from Uncertainty import ensemble_uncertainties_classification
+
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the dir to al the trained models')
-parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the segmentations')
-
 
 
 # Set device
@@ -45,6 +45,55 @@ def get_default_device():
     else:
         return torch.device('cpu')
 
+def dice_metric(ground_truth, predictions):
+    """
+    Returns Dice coefficient for a single example.
+    Args:
+      ground_truth: `numpy.ndarray`, binary ground truth segmentation target, 
+                     with shape [W, H, D].
+      predictions:  `numpy.ndarray`, binary segmentation predictions,
+                     with shape [W, H, D].
+    Returns:
+      Dice coefficient overlap (`float` in [0.0, 1.0])
+      between `ground_truth` and `predictions`.
+    """
+
+    # Cast to float32 type
+    ground_truth = ground_truth.astype("float32")
+    predictions = predictions.astype("float32")
+
+    # Calculate intersection and union of y_true and y_predict
+    intersection = np.sum(predictions * ground_truth)
+    union = np.sum(predictions) + np.sum(ground_truth)
+
+    # Calcualte dice metric
+    if intersection == 0.0 and union == 0.0:
+      dice = 1.0
+    else:
+      dice = (2. * intersection) / (union)
+
+    return dice
+
+
+def get_unc_score(gts, preds, uncs):
+    ordering = uncs.argsort()
+    uncs = uncs[ordering]
+    gts = gts[ordering]
+    preds = preds[ordering]
+    N = len(gts)
+    
+    cum_sum_dice = 0
+    fracs_retained = np.linspace(0.0, 1.0, 100)[1:]
+    for frac in fracs_retained:
+        pos = int(N * frac)
+        if pos == N:
+            curr_preds = preds
+        else:
+            curr_preds = preds[:pos] + gts[pos:]
+        cum_sum_dice += dice_metric(gts, curr_preds)
+    auc_dsc = cum_sum_dice / len(fracs_retained)
+    return auc_dsc
+    
 
 def main(args):
 
@@ -123,15 +172,12 @@ def main(args):
     
     th = args.threshold
 
-    
-    # all_predictions = []
-    # all_groundTruths = []
-    # all_uncs = []
-
     with torch.no_grad():
         metric_sum = 0.0
         metric_count = 0
+        auc_dsc = {}
         for count, batch_data in enumerate(val_loader):
+            print(metric_count)
             inputs, gt  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
                      batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
@@ -148,8 +194,8 @@ def main(args):
             all_outputs = np.asarray(all_outputs)
             outputs = np.mean(all_outputs, axis=0)
 
-            # Get all 
-            # uncs = -1 * (outputs * np.log(outputs) + (1. - outputs) * np.log(1. - outputs))
+            # Get all uncertainties
+            uncs = ensemble_uncertainties_classification( np.cat( (np.unsqueeze(all_outputs, axis=-1), np.unsqueeze(1.-all_outputs, axis=-1)), axis=-1) )
             
             outputs[outputs>th]=1
             outputs[outputs<th]=0
@@ -176,9 +222,13 @@ def main(args):
                         current_voxels[:, 2]] = 1
             seg=np.copy(seg2) 
 
-            # all_predictions.append(seg)
-            # all_groundTruths.append(gt)
-            # all_uncs.append(uncs)
+
+            # Calculate all AUC-DSCs
+            for unc_key, curr_uncs in uncs.items():
+                if unc_key in auc_dsc:
+                    auc_dsc[unc_key] += get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
+                else:
+                    auc_dsc[unc_key] = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
 
             im_sum = np.sum(seg) + np.sum(gt)
             if im_sum == 0:
@@ -187,26 +237,16 @@ def main(args):
             else:
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                 metric_sum += value.sum().item()
-            metric_count += 1
-
-            # Save as predictions as nii file here in original space
-
-            meta_data = batch_data['image_meta_dict']
-            for i, data in enumerate(outputs_o):  
-                out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
-
-            original_affine = out_meta.get("original_affine", None) if out_meta else None
-            affine = out_meta.get("affine", None) if out_meta else None
-            spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
-              
-            data2=np.copy(seg)
-            name = args.path_save+str(count+1)+".nii.gz"
-            write_nifti(data2,name,affine=affine,target_affine=original_affine,
-                        output_spatial_shape=spatial_shape)     
+            metric_count += 1  
 
         metric = metric_sum / metric_count
         print("Dice score:", metric)
-            
+        for unc_key, tot in auc_dsc.items():
+            metric = tot / metric_count
+            print(unc_key, metric)
+
+
+
     # # Plot the first ground truth and corresponding prediction at a random slice
     # gt, pred, unc = all_groundTruths[0], all_predictions[0], all_uncs[0]
     # gt_slice, pred_slice, unc_slice = gt[100,:,:], pred[100,:,:], unc[100,:,:]
