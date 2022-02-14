@@ -27,6 +27,7 @@ from scipy import ndimage
 
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set_theme()
+from sklearn import metrics
 
 from Uncertainty import ensemble_uncertainties_classification
 
@@ -35,6 +36,8 @@ parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for 
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the dir to al the trained models')
+parser.add_argument('--patient_num', type=int, default=0, help='Specify 1 patient to permit parallel processing')
+
 
 
 # Set device
@@ -75,29 +78,40 @@ def dice_metric(ground_truth, predictions):
     return dice
 
 
-def get_unc_score(gts, preds, uncs):
+def get_unc_score(gts, preds, uncs, plot=True):
     ordering = uncs.argsort()
     uncs = uncs[ordering]
     gts = gts[ordering]
     preds = preds[ordering]
     N = len(gts)
     
-    cum_sum_dice = 0
+    # cum_sum_dice = 0
     # # Significant class imbalance means it is important to use logspacing between values
     # # so that it is more granular for the higher retention fractions
-    # num_values = 200
-    # fracs_retained = np.log(np.arange(num_values+1)[1:])
-    # fracs_retained = fracs_retained / np.amax(fracs_retained)
-    fracs_retained = np.linspace(0.0,1.0,500)[1:]
+    num_values = 200
+    fracs_retained = np.log(np.arange(num_values+1)[1:])
+    fracs_retained = fracs_retained / np.amax(fracs_retained)
+    # fracs_retained = np.linspace(0.0,1.0,500)[1:]
+    dsc_scores = []
     for frac in fracs_retained:
         pos = int(N * frac)
         if pos == N:
             curr_preds = preds
         else:
             curr_preds = np.concatenate((preds[:pos], gts[pos:]))
-        cum_sum_dice += dice_metric(gts, curr_preds)
-    auc_dsc = cum_sum_dice / len(fracs_retained)
-    return auc_dsc
+        dsc_scores.append(dice_metric(gts, curr_preds))
+    #     cum_sum_dice += dice_metric(gts, curr_preds)
+    # auc_dsc = cum_sum_dice / len(fracs_retained)
+    dsc_scores = np.asarray(dsc_scores)
+
+    if plot:
+        plt.plot(fracs_retained, dsc_scores)
+        plt.xlabel("Retention Fraction")
+        plt.ylabel("DSC")
+        plt.savefig('unc_ret.png')
+        plt.clf()
+
+    return metrics.auc(fracs_retained, dsc_scores)
     
 
 def main(args):
@@ -178,11 +192,10 @@ def main(args):
     th = args.threshold
 
     with torch.no_grad():
-        metric_sum = 0.0
-        metric_count = 0
-        auc_dsc = {}
         for count, batch_data in enumerate(val_loader):
-            print(metric_count)
+            if count != args.patient_num:
+                continue
+            print("Patient num: ", count)
             inputs, gt  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
                      batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
@@ -230,41 +243,29 @@ def main(args):
 
             # Calculate all AUC-DSCs
             for unc_key, curr_uncs in uncs.items():
-                if unc_key in auc_dsc:
-                    auc_dsc[unc_key] += get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
-                else:
-                    auc_dsc[unc_key] = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
+                auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
+                print(unc_key, auc_dsc)
 
             # Get ideal values
-            if "ideal" in uncs.keys():
-                auc_dsc["ideal"] += get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()))
-            else:
-                auc_dsc["ideal"] = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()))
+            auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()))
+            print("Ideal", auc_dsc)
 
             # Get random values
             rand_uncs = np.arange(0, 1000, len(gt.flatten()))
             np.random.seed(0)
             np.random.shuffle(rand_uncs)
-            if "random" in uncs.keys():
-                auc_dsc["random"] += get_unc_score(gt.flatten(), seg.flatten(), rand_uncs)
-            else:
-                auc_dsc["random"] = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs)
+            auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs)
+            print("Random", auc_dsc)
 
 
             im_sum = np.sum(seg) + np.sum(gt)
             if im_sum == 0:
                 value = 1.0
-                metric_sum += value
+                dsc = value
             else:
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-                metric_sum += value.sum().item()
-            metric_count += 1  
-
-        metric = metric_sum / metric_count
-        print("Dice score:", metric)
-        for unc_key, tot in auc_dsc.items():
-            metric = tot / metric_count
-            print(unc_key, metric)
+                dsc = value.sum().item()
+            print("Dice score:", dsc)
 
 
 
