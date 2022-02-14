@@ -108,6 +108,7 @@ def get_unc_score(gts, preds, uncs, plot=True):
         
         # Get ideal line
         uncs = np.absolute(gts-preds)
+        ordering = uncs.argsort()
         uncs = uncs[ordering]
         gts = gts[ordering]
         preds = preds[ordering]
@@ -126,6 +127,7 @@ def get_unc_score(gts, preds, uncs, plot=True):
         uncs = np.linspace(0, 1000, len(gts))
         np.random.seed(0)
         np.random.shuffle(uncs)
+        ordering = uncs.argsort()
         uncs = uncs[ordering]
         gts = gts[ordering]
         preds = preds[ordering]
@@ -140,7 +142,7 @@ def get_unc_score(gts, preds, uncs, plot=True):
         dsc_scores_random = np.asarray(dsc_scores_random)
         plt.plot(fracs_retained, dsc_scores_random, label="Random")
 
-        plt.xlim([0.0,1.01])
+        plt.xlim([0.0,1.0])
         plt.legend()
         plt.savefig('unc_ret.png')
         plt.clf()
