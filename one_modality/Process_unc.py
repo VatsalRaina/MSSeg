@@ -142,7 +142,7 @@ def get_unc_score(gts, preds, uncs, plot=True):
         dsc_scores_random = np.asarray(dsc_scores_random)
         plt.plot(fracs_retained, dsc_scores_random, label="Random")
 
-        plt.xlim([0.0,1.001])
+        plt.xlim([0.0,1.01])
         plt.legend()
         plt.savefig('unc_ret.png')
         plt.clf()
