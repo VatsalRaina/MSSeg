@@ -83,11 +83,12 @@ def get_unc_score(gts, preds, uncs):
     N = len(gts)
     
     cum_sum_dice = 0
-    # Significant class imbalance means it is important to use logspacing between values
-    # so that it is more granular for the higher retention fractions
-    num_values = 200
-    fracs_retained = np.log(np.arange(num_values+1)[1:])
-    fracs_retained = fracs_retained / np.amax(fracs_retained)
+    # # Significant class imbalance means it is important to use logspacing between values
+    # # so that it is more granular for the higher retention fractions
+    # num_values = 200
+    # fracs_retained = np.log(np.arange(num_values+1)[1:])
+    # fracs_retained = fracs_retained / np.amax(fracs_retained)
+    fracs_retained = np.linspace(0.0,1.0,500)[1:]
     for frac in fracs_retained:
         pos = int(N * frac)
         if pos == N:
