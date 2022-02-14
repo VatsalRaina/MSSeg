@@ -19,7 +19,7 @@ def expected_entropy(probs, epsilon=1e-10):
     :return: array [num_voxels_X, num_voxels_Y, num_voxels_Z,]
     """
     log_probs = -np.log(probs + epsilon)
-    return np.mean(np.sum(probs * log_probs, axis=2), axis=0)
+    return np.mean(np.sum(probs * log_probs, axis=-1), axis=0)
 
 
 def ensemble_uncertainties_classification(probs, epsilon=1e-10):
