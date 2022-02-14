@@ -83,7 +83,7 @@ def get_unc_score(gts, preds, uncs):
     N = len(gts)
     
     cum_sum_dice = 0
-    fracs_retained = np.linspace(0.0, 1.0, 100)[1:]
+    fracs_retained = np.linspace(0.0, 1.0, 200)[1:]
     for frac in fracs_retained:
         pos = int(N * frac)
         if pos == N:
@@ -229,6 +229,22 @@ def main(args):
                     auc_dsc[unc_key] += get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
                 else:
                     auc_dsc[unc_key] = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
+
+            # Get ideal values
+            if "ideal" in uncs.items():
+                auc_dsc["ideal"] += get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()))
+            else:
+                auc_dsc["ideal"] = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()))
+
+            # Get random values
+            rand_uncs = np.arange(0, 1000, len(gt.flatten()))
+            np.random.seed(0)
+            np.random.shuffle(rand_uncs)
+            if "random" in uncs.items():
+                auc_dsc["random"] += get_unc_score(gt.flatten(), seg.flatten(), rand_uncs)
+            else:
+                auc_dsc["random"] = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs)
+
 
             im_sum = np.sum(seg) + np.sum(gt)
             if im_sum == 0:
