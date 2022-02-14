@@ -85,13 +85,11 @@ def get_unc_score(gts, preds, uncs, plot=True):
     preds = preds[ordering]
     N = len(gts)
     
-    # cum_sum_dice = 0
     # # Significant class imbalance means it is important to use logspacing between values
     # # so that it is more granular for the higher retention fractions
     num_values = 200
     fracs_retained = np.log(np.arange(num_values+1)[1:])
     fracs_retained = fracs_retained / np.amax(fracs_retained)
-    # fracs_retained = np.linspace(0.0,1.0,500)[1:]
     dsc_scores = []
     for frac in fracs_retained:
         pos = int(N * frac)
@@ -100,14 +98,50 @@ def get_unc_score(gts, preds, uncs, plot=True):
         else:
             curr_preds = np.concatenate((preds[:pos], gts[pos:]))
         dsc_scores.append(dice_metric(gts, curr_preds))
-    #     cum_sum_dice += dice_metric(gts, curr_preds)
-    # auc_dsc = cum_sum_dice / len(fracs_retained)
     dsc_scores = np.asarray(dsc_scores)
 
     if plot:
-        plt.plot(fracs_retained, dsc_scores)
+
+        plt.plot(fracs_retained, dsc_scores, label="Uncertainty")
         plt.xlabel("Retention Fraction")
         plt.ylabel("DSC")
+        
+        # Get ideal line
+        uncs = np.absolute(gts-preds)
+        uncs = uncs[ordering]
+        gts = gts[ordering]
+        preds = preds[ordering]
+        dsc_scores_ideal = []
+        for frac in fracs_retained:
+            pos = int(N * frac)
+            if pos == N:
+                curr_preds = preds
+            else:
+                curr_preds = np.concatenate((preds[:pos], gts[pos:]))
+            dsc_scores_ideal.append(dice_metric(gts, curr_preds))
+        dsc_scores_ideal = np.asarray(dsc_scores_ideal)
+        plt.plot(fracs_retained, dsc_scores_ideal, label="Ideal")
+
+        # Get random line
+        uncs = np.linspace(0, 1000, len(gts))
+        np.random.seed(0)
+        np.random.shuffle(uncs)
+        uncs = uncs[ordering]
+        gts = gts[ordering]
+        preds = preds[ordering]
+        dsc_scores_random = []
+        for frac in fracs_retained:
+            pos = int(N * frac)
+            if pos == N:
+                curr_preds = preds
+            else:
+                curr_preds = np.concatenate((preds[:pos], gts[pos:]))
+            dsc_scores_random.append(dice_metric(gts, curr_preds))
+        dsc_scores_random = np.asarray(dsc_scores_random)
+        plt.plot(fracs_retained, dsc_scores_random, label="Random")
+
+        plt.xlim([0.0,1.01])
+        plt.legend()
         plt.savefig('unc_ret.png')
         plt.clf()
 
@@ -251,7 +285,7 @@ def main(args):
             print("Ideal", auc_dsc)
 
             # Get random values
-            rand_uncs = np.arange(0, 1000, len(gt.flatten()))
+            rand_uncs = np.linspace(0, 1000, len(gt.flatten()))
             np.random.seed(0)
             np.random.shuffle(rand_uncs)
             auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs, plot=False)
