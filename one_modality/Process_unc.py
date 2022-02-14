@@ -89,7 +89,7 @@ def get_unc_score(gts, preds, uncs):
         if pos == N:
             curr_preds = preds
         else:
-            curr_preds = preds[:pos] + gts[pos:]
+            curr_preds = np.concatenate((preds[:pos], gts[pos:]))
         cum_sum_dice += dice_metric(gts, curr_preds)
     auc_dsc = cum_sum_dice / len(fracs_retained)
     return auc_dsc
