@@ -227,10 +227,23 @@ def main(args):
     
     th = args.threshold
 
+    all_vals = {
+        "confidence": 0.0,
+        "entropy_of_expected": 0.0,
+        "expected_entropy": 0.0,
+        "mutual_information": 0.0,
+        "epkl": 0.0,
+        "reverse_mutual_information": 0.0,
+        "ideal": 0.0,
+        "random": 0.0
+        }
+    num_patients = 0
+
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
-            if count != args.patient_num:
-                continue
+            num_patients += 1
+            # if count != args.patient_num:
+            #     continue
             print("Patient num: ", count)
             inputs, gt  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
@@ -279,12 +292,14 @@ def main(args):
 
             # Calculate all AUC-DSCs
             for unc_key, curr_uncs in uncs.items():
-                auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
+                auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), plot=False)
                 print(unc_key, auc_dsc)
+                all_vals[unc_key] += auc_dsc
 
             # Get ideal values
             auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()), plot=False)
             print("Ideal", auc_dsc)
+            all_vals["ideal"] += auc_dsc
 
             # Get random values
             rand_uncs = np.linspace(0, 1000, len(gt.flatten()))
@@ -292,6 +307,7 @@ def main(args):
             np.random.shuffle(rand_uncs)
             auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs, plot=False)
             print("Random", auc_dsc)
+            all_vals["random"] += auc_dsc
 
 
             im_sum = np.sum(seg) + np.sum(gt)
@@ -303,6 +319,10 @@ def main(args):
                 dsc = value.sum().item()
             print("Dice score:", dsc)
 
+    print("Mean across all patients:")
+    
+    for unc_key, sum_aucdsc in all_vals.items():
+        print(unc_key, sum_aucdsc/num_patients)
 
 
     # # Plot the first ground truth and corresponding prediction at a random slice
