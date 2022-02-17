@@ -206,15 +206,15 @@ def main(args):
         # plt.savefig(args.path_save + str(slice_num) + 'gt.png')
         # plt.clf()
 
-        ax = sns.heatmap(pred_slice, vmin=0.0, vmax=1.0, cbar=False, xticklabels=False, yticklabels=False)
-        ax.invert_yaxis()
-        plt.savefig(args.path_save + str(slice_num) + 'pred.png')
-        plt.clf()
-
-        # ax = sns.heatmap(unc_slice, vmin=0.0, vmax=np.log(2), xticklabels=False, yticklabels=False)
+        # ax = sns.heatmap(pred_slice, vmin=0.0, vmax=1.0, cbar=False, xticklabels=False, yticklabels=False)
         # ax.invert_yaxis()
-        # plt.savefig(args.path_save + str(slice_num) + 'unc.png')
+        # plt.savefig(args.path_save + str(slice_num) + 'pred.png')
         # plt.clf()
+
+        ax = sns.heatmap(unc_slice, vmin=0.0, vmax=np.log(2), xticklabels=False, yticklabels=False)
+        ax.invert_yaxis()
+        plt.savefig(args.path_save + str(slice_num) + 'unc.png')
+        plt.clf()
 
         # ax = sns.heatmap(inp_slice, xticklabels=False, yticklabels=False)
         # ax.invert_yaxis()
