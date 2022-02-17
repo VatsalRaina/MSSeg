@@ -199,11 +199,11 @@ def main(args):
 
         gt_slice, pred_slice, unc_slice = gt[slice_num,:,:], pred[slice_num,:,:], unc[slice_num,:,:]
 
-        sns.heatmap(gt_slice)
+        sns.heatmap(gt_slice, vmin=0.0, vmax=1.0)
         plt.savefig(args.path_save + str(slice_num) + 'gt.png')
         plt.clf()
 
-        # sns.heatmap(pred_slice)
+        # sns.heatmap(pred_slice, vmin=0.0, vmax=1.0)
         # plt.savefig(args.path_save + str(slice_num) + 'pred.png')
         # plt.clf()
 
