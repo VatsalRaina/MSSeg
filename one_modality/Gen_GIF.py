@@ -180,7 +180,7 @@ def main(args):
             all_predictions.append(seg)
             all_groundTruths.append(gt)
             all_uncs.append(uncs)
-            all_inputs.append(inputs.cpu().numpy())
+            all_inputs.append(inputs.cpu().numpy()[0])
 
             # im_sum = np.sum(seg) + np.sum(gt)
             # if im_sum == 0:
