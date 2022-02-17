@@ -216,7 +216,7 @@ def main(args):
         # plt.savefig(args.path_save + str(slice_num) + 'unc.png')
         # plt.clf()
 
-        ax = sns.heatmap(inp_slice, xticklabels=False, yticklabels=False)
+        ax = sns.heatmap(inp_slice, vmin=-0.5, vmax=4.5, cbar=False, xticklabels=False, yticklabels=False)
         ax.invert_yaxis()
         plt.savefig(args.path_save + str(slice_num) + 'inp.png')
         plt.clf()
