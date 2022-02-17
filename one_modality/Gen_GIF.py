@@ -201,21 +201,23 @@ def main(args):
 
         gt_slice, pred_slice, unc_slice = gt[slice_num,:,:], pred[slice_num,:,:], unc[slice_num,:,:]
 
-        ax = sns.heatmap(gt_slice, vmin=0.0, vmax=1.0, cbar=False)
+        ax = sns.heatmap(gt_slice, vmin=0.0, vmax=1.0, cbar=False, xticklabels=False, yticklabels=False)
         ax.invert_yaxis()
         plt.savefig(args.path_save + str(slice_num) + 'gt.png')
         plt.clf()
-        break
 
-        # sns.heatmap(pred_slice, vmin=0.0, vmax=1.0, cbar=False)
+        # ax = sns.heatmap(pred_slice, vmin=0.0, vmax=1.0, cbar=False, xticklabels=False, yticklabels=False)
+        # ax.invert_yaxis()
         # plt.savefig(args.path_save + str(slice_num) + 'pred.png')
         # plt.clf()
 
-        # sns.heatmap(unc_slice, vmin=0.0, vmax=np.log(2))
+        # ax = sns.heatmap(unc_slice, vmin=0.0, vmax=np.log(2), xticklabels=False, yticklabels=False)
+        # ax.invert_yaxis()
         # plt.savefig(args.path_save + str(slice_num) + 'unc.png')
         # plt.clf()
 
-        # sns.heatmap(inp_slice)
+        # ax = sns.heatmap(inp_slice, xticklabels=False, yticklabels=False)
+        # ax.invert_yaxis()
         # plt.savefig(args.path_save + str(slice_num) + 'inp.png')
         # plt.clf()
 
