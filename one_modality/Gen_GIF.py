@@ -195,11 +195,11 @@ def main(args):
         # print("Dice score:", metric)
             
     # Plot the first ground truth and corresponding prediction and uncertainty at a random slice
-    gt, pred, unc = all_groundTruths[0], all_predictions[0], all_uncs[0]
+    gt, pred, unc, inp = all_groundTruths[0], all_predictions[0], all_uncs[0], all_inputs[0]
 
     for slice_num in range(len(gt)):
 
-        gt_slice, pred_slice, unc_slice = gt[slice_num,:,:], pred[slice_num,:,:], unc[slice_num,:,:]
+        gt_slice, pred_slice, unc_slice, inp_slice = gt[slice_num,:,:], pred[slice_num,:,:], unc[slice_num,:,:], inp[slice_num,:,:]
 
         # ax = sns.heatmap(gt_slice, vmin=0.0, vmax=1.0, cbar=False, xticklabels=False, yticklabels=False)
         # ax.invert_yaxis()
@@ -211,15 +211,15 @@ def main(args):
         # plt.savefig(args.path_save + str(slice_num) + 'pred.png')
         # plt.clf()
 
-        ax = sns.heatmap(unc_slice, vmin=0.0, vmax=np.log(2), cbar=False, xticklabels=False, yticklabels=False)
-        ax.invert_yaxis()
-        plt.savefig(args.path_save + str(slice_num) + 'unc.png')
-        plt.clf()
-
-        # ax = sns.heatmap(inp_slice, xticklabels=False, yticklabels=False)
+        # ax = sns.heatmap(unc_slice, vmin=0.0, vmax=np.log(2), cbar=False, xticklabels=False, yticklabels=False)
         # ax.invert_yaxis()
-        # plt.savefig(args.path_save + str(slice_num) + 'inp.png')
+        # plt.savefig(args.path_save + str(slice_num) + 'unc.png')
         # plt.clf()
+
+        ax = sns.heatmap(inp_slice, xticklabels=False, yticklabels=False)
+        ax.invert_yaxis()
+        plt.savefig(args.path_save + str(slice_num) + 'inp.png')
+        plt.clf()
 
 #%%
 if __name__ == "__main__":
