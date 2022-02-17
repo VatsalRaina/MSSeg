@@ -127,6 +127,7 @@ def main(args):
     all_predictions = []
     all_groundTruths = []
     all_uncs = []
+    all_inputs = []
 
     with torch.no_grad():
         metric_sum = 0.0
@@ -179,6 +180,7 @@ def main(args):
             all_predictions.append(seg)
             all_groundTruths.append(gt)
             all_uncs.append(uncs)
+            all_inputs.append(inputs.cpu().numpy())
 
             # im_sum = np.sum(seg) + np.sum(gt)
             # if im_sum == 0:
@@ -199,16 +201,22 @@ def main(args):
 
         gt_slice, pred_slice, unc_slice = gt[slice_num,:,:], pred[slice_num,:,:], unc[slice_num,:,:]
 
-        sns.heatmap(gt_slice, vmin=0.0, vmax=1.0)
+        ax = sns.heatmap(gt_slice, vmin=0.0, vmax=1.0, cbar=False)
+        ax.invert_yaxis()
         plt.savefig(args.path_save + str(slice_num) + 'gt.png')
         plt.clf()
+        break
 
-        # sns.heatmap(pred_slice, vmin=0.0, vmax=1.0)
+        # sns.heatmap(pred_slice, vmin=0.0, vmax=1.0, cbar=False)
         # plt.savefig(args.path_save + str(slice_num) + 'pred.png')
         # plt.clf()
 
-        # sns.heatmap(unc_slice)
+        # sns.heatmap(unc_slice, vmin=0.0, vmax=np.log(2))
         # plt.savefig(args.path_save + str(slice_num) + 'unc.png')
+        # plt.clf()
+
+        # sns.heatmap(inp_slice)
+        # plt.savefig(args.path_save + str(slice_num) + 'inp.png')
         # plt.clf()
 
 #%%
