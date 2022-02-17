@@ -197,9 +197,13 @@ def main(args):
     # Plot the first ground truth and corresponding prediction and uncertainty at a random slice
     gt, pred, unc, inp_f = all_groundTruths[0], all_predictions[0], all_uncs[0], all_inputs[0]
 
+    print("CMON", inp_f.shape)
+
     for slice_num in range(len(gt)):
 
         gt_slice, pred_slice, unc_slice, inp_slice = gt[slice_num,:,:], pred[slice_num,:,:], unc[slice_num,:,:], inp_f[slice_num,:,:]
+
+        print("AND NOW?", inp_slice.shape)
 
         # ax = sns.heatmap(gt_slice, vmin=0.0, vmax=1.0, cbar=False, xticklabels=False, yticklabels=False)
         # ax.invert_yaxis()
