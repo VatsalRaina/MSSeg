@@ -195,7 +195,7 @@ def main(args):
         # print("Dice score:", metric)
             
     # Plot the first ground truth and corresponding prediction and uncertainty at a random slice
-    gt, pred, unc = all_groundTruths[1], all_predictions[1], all_uncs[1]
+    gt, pred, unc = all_groundTruths[0], all_predictions[0], all_uncs[0]
 
     for slice_num in range(len(gt)):
 
