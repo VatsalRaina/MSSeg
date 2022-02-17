@@ -11,7 +11,7 @@ parser.add_argument('--save_file', type=str, help='Where to save output file of 
 def main(args):
     
     data, affine = load_nifti(args.input_file)
-    den = nlmeans(data, patch_radius=3)
+    den = nlmeans(data, sigma=3, patch_radius=3)
     save_nifti(args.save_file, den, affine)
 
 
