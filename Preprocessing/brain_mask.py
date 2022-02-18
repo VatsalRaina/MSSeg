@@ -12,7 +12,7 @@ parser.add_argument('--save_file', type=str, help='Where to save output file of 
 def main(args):
     
     flair = ants.image_read(args.input_flair).numpy()
-    mask = ants.image_read(args.input_t1).numpy()
+    mask = ants.image_read(args.input_brain_mask).numpy()
     orientation = nib.load(args.input_flair).affine #To save the FLAIR orientation
 
     flair_masked = flair * mask
