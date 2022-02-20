@@ -29,7 +29,10 @@ parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--learning_rate', type=float, default=1e-5, help='Specify the initial learning rate')
 parser.add_argument('--n_epochs', type=int, default=200, help='Specify the number of epochs to train for')
 parser.add_argument('--seed', type=int, default=1, help='Specify the global random seed')
-parser.add_argument('--path_data', type=str, default='', help='Specify the path to the training data files directory')
+parser.add_argument('--path_train_data', type=str, default='', help='Specify the path to the training data files directory')
+parser.add_argument('--path_train_gts', type=str, default='', help='Specify the path to the training gts files directory')
+parser.add_argument('--path_val_data', type=str, default='', help='Specify the path to the validation data files directory')
+parser.add_argument('--path_val_gts', type=str, default='', help='Specify the path to the validation gts files directory')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to the trained model will be saved')
 
 # Set device
@@ -57,29 +60,34 @@ def main(args):
     # Choose device
     device = get_default_device()
 
-    root_dir = args.path_save  # Path where the trained model is located
-    path_data = args.path_data
-    flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
+    root_dir = args.path_save  # Path where the trained model is saved
+
+    flair = sorted(glob(os.path.join(args.path_train_data, "*FLAIR.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs = sorted(glob(os.path.join(path_data, "*gt.nii")),
+    segs = sorted(glob(os.path.join(args.path_train_gts, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))                   # Collect all corresponding ground truths
 
-    N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
+    flair_val = sorted(glob(os.path.join(args.path_val_data, "*FLAIR.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
+    segs_val = sorted(glob(os.path.join(args.path_val_gts, "*gt.nii")),
+                  key=lambda i: int(re.sub('\D', '', i)))                   # Collect all corresponding ground truths
+
+    # N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
     
     #indices = np.random.permutation(N)
-    indices = np.asarray([0, 5, 10, 1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 14])
+    # indices = np.asarray([0, 5, 10, 1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 14])
     # print(indices)
     # The overall number of patients in the training set is 15
-    v=indices[:3]   # So validation patients are those with numbers 1, 6 and 11 (python index is one less)
-    t=indices[3:]
+    # v=indices[:3]   # So validation patients are those with numbers 1, 6 and 11 (python index is one less)
+    # t=indices[3:]
 
 
     train_files=[]
     val_files=[]
-    for i in t:
+    for i in range(len(flair)):
         train_files = train_files + [{"image": fl,"label": seg} for fl, seg in zip(flair[i:i+1], segs[i:i+1])]
-    for j in v:
-        val_files = val_files + [{"image": fl,"label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
+    for j in range(len(flair_val)):
+        val_files = val_files + [{"image": fl,"label": seg} for fl, seg in zip(flair_val[j:j+1], segs_val[j:j+1])]
     print("Training cases:", len(train_files))
     print("Validation cases:", len(val_files))
     

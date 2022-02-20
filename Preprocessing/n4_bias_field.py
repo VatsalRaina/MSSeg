@@ -46,5 +46,5 @@ corrected_image_full_resolution = inputImage / sitk.Exp( log_bias_field )
 
 sitk.WriteImage(corrected_image, sys.argv[2])
 
-if ("SITK_NOSHOW" not in os.environ):
-    sitk.Show(corrected_image, "N4 Corrected")
+# if ("SITK_NOSHOW" not in os.environ):
+#     sitk.Show(corrected_image, "N4 Corrected")
