@@ -158,9 +158,14 @@ def main(args):
                         current_voxels[:, 2]] = 1
             seg=np.copy(seg2)
 
-            value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+                metric_sum += value
+            else:
+                value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+                metric_sum += value.sum().item()
             metric_count += 1
-            metric_sum += value.sum().item()
 
             # Save as predictions as nii file here in original space
 
