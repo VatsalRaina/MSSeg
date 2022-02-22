@@ -29,6 +29,7 @@ import itertools
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
+parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the path to the trained model')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the segmentations')
 
@@ -59,7 +60,7 @@ def main(args):
     path_data = args.path_data  # Path where the data is
     flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs = sorted(glob(os.path.join(path_data, "*gt.nii")),
+    segs = sorted(glob(os.path.join(args.path_gts, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))  
 
 
@@ -161,20 +162,20 @@ def main(args):
             metric_count += 1
             metric_sum += value.sum().item()
 
-            # # Save as predictions as nii file here in original space
+            # Save as predictions as nii file here in original space
 
-            # meta_data = batch_data['image_meta_dict']
-            # for i, data in enumerate(outputs_o):  
-            #     out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
+            meta_data = batch_data['image_meta_dict']
+            for i, data in enumerate(outputs_o):  
+                out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
 
-            # original_affine = out_meta.get("original_affine", None) if out_meta else None
-            # affine = out_meta.get("affine", None) if out_meta else None
-            # spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
+            original_affine = out_meta.get("original_affine", None) if out_meta else None
+            affine = out_meta.get("affine", None) if out_meta else None
+            spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
               
-            # data2=np.copy(seg)
-            # name = args.path_save+str(count+1)+".nii.gz"
-            # write_nifti(data2,name,affine=affine,target_affine=original_affine,
-            #             output_spatial_shape=spatial_shape)        
+            data2=np.copy(seg)
+            name = args.path_save+str(count+1)+".nii.gz"
+            write_nifti(data2,name,affine=affine,target_affine=original_affine,
+                        output_spatial_shape=spatial_shape)        
 
         metric = metric_sum / metric_count
         print("Dice score:", metric)
