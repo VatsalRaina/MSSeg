@@ -167,20 +167,20 @@ def main(args):
                 metric_sum += value.sum().item()
             metric_count += 1
 
-            # Save as predictions as nii file here in original space
+            # # Save as predictions as nii file here in original space
 
-            meta_data = batch_data['image_meta_dict']
-            for i, data in enumerate(outputs_o):  
-                out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
+            # meta_data = batch_data['image_meta_dict']
+            # for i, data in enumerate(outputs_o):  
+            #     out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
 
-            original_affine = out_meta.get("original_affine", None) if out_meta else None
-            affine = out_meta.get("affine", None) if out_meta else None
-            spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
+            # original_affine = out_meta.get("original_affine", None) if out_meta else None
+            # affine = out_meta.get("affine", None) if out_meta else None
+            # spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
               
-            data2=np.copy(seg)
-            name = args.path_save+str(count+1)+".nii.gz"
-            write_nifti(data2,name,affine=affine,target_affine=original_affine,
-                        output_spatial_shape=spatial_shape)        
+            # data2=np.copy(seg)
+            # name = args.path_save+str(count+1)+".nii.gz"
+            # write_nifti(data2,name,affine=affine,target_affine=original_affine,
+            #             output_spatial_shape=spatial_shape)        
 
         metric = metric_sum / metric_count
         print("Dice score:", metric)
