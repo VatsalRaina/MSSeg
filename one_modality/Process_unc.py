@@ -35,6 +35,7 @@ parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
+parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the dir to al the trained models')
 parser.add_argument('--patient_num', type=int, default=0, help='Specify 1 patient to permit parallel processing')
 
@@ -165,7 +166,7 @@ def main(args):
     path_data = args.path_data  # Path where the data is
     flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs = sorted(glob(os.path.join(path_data, "*gt.nii")),
+    segs = sorted(glob(os.path.join(args.path_gts, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))        
 
 
