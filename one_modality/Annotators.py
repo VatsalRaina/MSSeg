@@ -194,9 +194,10 @@ def main(args):
     all_annotations = np.asarray(all_annotations)
     # Assume each voxel position is a bernoulli distribution
     variance_map = np.mean(all_annotations, axis=0) * (1. - np.mean(all_annotations, axis=0))
+    print(variance_map[100,:,:])
 
 
-    # # Plot the first ground truth and corresponding prediction at a random slice
+    # Plot the first ground truth and corresponding prediction at a random slice
     var_slice, unc_slice = variance_map[100,:,:], uncs[100,:,:]
 
     sns.heatmap(unc_slice)
