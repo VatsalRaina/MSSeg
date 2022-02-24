@@ -168,6 +168,7 @@ def main(args):
     indices = np.arange(args.num_annotators)
     v=indices[:]
 
+    ann_files = []
     for j in v:
         ann_files = ann_files + [{"annotator": seg} for seg in annotator_paths[j:j+1]]
 
