@@ -189,7 +189,7 @@ def main(args):
         for count, batch_data in enumerate(val_loader):
             num_patients += 1
             annotations  = (batch_data["annotator"].to(device).cpu().numpy())
-            all_annotations.append(annotations[0][0])
+            all_annotations.append(annotations[0][0].astype(float))
     
     all_annotations = np.asarray(all_annotations)
     # Assume each voxel position is a bernoulli distribution
