@@ -162,7 +162,7 @@ def main(args):
 
     annotator_paths = []
     for annotator_num in range(1, args.num_annotators+1):
-        path = args.path_gts + "annotator" + str(annotator_num) + "0_ann1.nii"
+        path = args.path_gts + "annotator" + str(annotator_num) + "/1_ann" + str(annotator_num) + ".nii.gz"
         annotator_paths.append(path)
 
     indices = np.arange(args.num_annotators)
