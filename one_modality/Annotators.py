@@ -181,7 +181,7 @@ def main(args):
     ]
     )
 
-    val_ds = CacheDataset(data=test_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
+    val_ds = CacheDataset(data=ann_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
     val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
 
     all_annotations = []
