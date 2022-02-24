@@ -295,12 +295,12 @@ def main(args):
             for unc_key, curr_uncs in uncs.items():
                 auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), plot=False)
                 print(unc_key, auc_dsc)
-                all_vals[unc_key] += auc_dsc
+                all_vals[unc_key] += 1. - auc_dsc
 
             # Get ideal values
             auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()), plot=False)
             print("Ideal", auc_dsc)
-            all_vals["ideal"] += auc_dsc
+            all_vals["ideal"] += 1. - auc_dsc
 
             # Get random values
             rand_uncs = np.linspace(0, 1000, len(gt.flatten()))
@@ -308,7 +308,7 @@ def main(args):
             np.random.shuffle(rand_uncs)
             auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs, plot=False)
             print("Random", auc_dsc)
-            all_vals["random"] += auc_dsc
+            all_vals["random"] += 1. - auc_dsc
 
 
             im_sum = np.sum(seg) + np.sum(gt)
@@ -322,8 +322,8 @@ def main(args):
 
     print("Mean across all patients:")
     
-    for unc_key, sum_aucdsc in all_vals.items():
-        print(unc_key, sum_aucdsc/num_patients)
+    for unc_key, sum_aacdsc in all_vals.items():
+        print(unc_key, sum_aacdsc/num_patients)
 
 
     # # Plot the first ground truth and corresponding prediction at a random slice
