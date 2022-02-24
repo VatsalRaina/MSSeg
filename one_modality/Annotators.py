@@ -189,6 +189,7 @@ def main(args):
         for count, batch_data in enumerate(val_loader):
             num_patients += 1
             annotations  = (batch_data["annotator"].to(device).cpu().numpy())
+            print(annotations.shape)
             all_annotations.append(annotations)
     
     all_annotations = np.asarray(all_annotations)
