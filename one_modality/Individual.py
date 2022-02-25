@@ -27,6 +27,7 @@ from scipy import ndimage
 
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set_theme()
+import pandas as pd
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
@@ -229,11 +230,10 @@ def main(args):
     data = []
     for dsc1, dsc2 in zip(model1_dsc, model2_dsc):
         data.append({"MSSEG-1": dsc1, "PubMRI": dsc2})
-
+    df = pd.DataFrame(data)
     
-
-    ax = sns.boxplot(x="Training", y="DSC", data=data)
-    ax = sns.swarmplot(x="Training", y="DSC", data=data, color=".25")
+    ax = sns.boxplot(x="Training", y="DSC", data=df)
+    ax = sns.swarmplot(x="Training", y="DSC", data=df, color=".25")
     plt.savefig('box.png')
     plt.clf()
 
