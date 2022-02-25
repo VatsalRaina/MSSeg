@@ -227,16 +227,24 @@ def main(args):
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                 model2_dsc.append(value.sum().item())
 
-    data = []
-    for dsc1, dsc2 in zip(model1_dsc, model2_dsc):
-        data.append({"Training": "MSSEG-1", "DSC": dsc1})
-        data.append({"Training": "PubMRI", "DSC": dsc2})
-    df = pd.DataFrame(data)
-    
-    ax = sns.boxplot(x="Training", y="DSC", data=df)
-    ax = sns.swarmplot(x="Training", y="DSC", data=df, color=".25")
-    plt.savefig('box.png')
+
+    sns.scatterplot(x=model1_dsc, y=model2_dsc)
+    plt.xlabel("Trained on MSSEG-1")
+    plt.ylabel("Trained on PubMRI")
+    plt.savefig('scatter.png')
     plt.clf()
+
+
+    # data = []
+    # for dsc1, dsc2 in zip(model1_dsc, model2_dsc):
+    #     data.append({"Training": "MSSEG-1", "DSC": dsc1})
+    #     data.append({"Training": "PubMRI", "DSC": dsc2})
+    # df = pd.DataFrame(data)
+    
+    # ax = sns.boxplot(x="Training", y="DSC", data=df)
+    # ax = sns.swarmplot(x="Training", y="DSC", data=df, color=".25")
+    # plt.savefig('box.png')
+    # plt.clf()
 
 
 #%%
