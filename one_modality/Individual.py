@@ -228,7 +228,7 @@ def main(args):
                 model2_dsc.append(value.sum().item())
 
 
-    sns.scatterplot(x=model1_dsc, y=model2_dsc)
+    sns.regplot(x=model1_dsc, y=model2_dsc)
     plt.xlabel("Trained on MSSEG-1")
     plt.ylabel("Trained on PubMRI")
     plt.savefig('scatter.png')
