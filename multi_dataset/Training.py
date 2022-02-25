@@ -33,10 +33,10 @@ parser.add_argument('--path_train_data1', type=str, default='', help='Specify th
 parser.add_argument('--path_train_gts1', type=str, default='', help='Specify the path to the training gts files directory')
 parser.add_argument('--path_val_data1', type=str, default='', help='Specify the path to the validation data files directory')
 parser.add_argument('--path_val_gts1', type=str, default='', help='Specify the path to the validation gts files directory')
-parser.add_argument('--path_train_data1', type=str, default='', help='Specify the path to the training data files directory')
-parser.add_argument('--path_train_gts1', type=str, default='', help='Specify the path to the training gts files directory')
-parser.add_argument('--path_val_data1', type=str, default='', help='Specify the path to the validation data files directory')
-parser.add_argument('--path_val_gts1', type=str, default='', help='Specify the path to the validation gts files directory')
+parser.add_argument('--path_train_data2', type=str, default='', help='Specify the path to the training data files directory')
+parser.add_argument('--path_train_gts2', type=str, default='', help='Specify the path to the training gts files directory')
+parser.add_argument('--path_val_data2', type=str, default='', help='Specify the path to the validation data files directory')
+parser.add_argument('--path_val_gts2', type=str, default='', help='Specify the path to the validation gts files directory')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to the trained model will be saved')
 
 # Set device
