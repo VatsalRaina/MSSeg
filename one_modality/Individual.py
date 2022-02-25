@@ -229,7 +229,8 @@ def main(args):
 
     data = []
     for dsc1, dsc2 in zip(model1_dsc, model2_dsc):
-        data.append({"MSSEG-1": dsc1, "PubMRI": dsc2})
+        data.append({"Training": "MSSEG-1", "DSC": dsc1})
+        data.append({"Training": "PubMRI", "DSC": dsc2})
     df = pd.DataFrame(data)
     
     ax = sns.boxplot(x="Training", y="DSC", data=df)
