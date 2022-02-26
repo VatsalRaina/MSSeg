@@ -36,6 +36,7 @@ parser.add_argument('--path_data', type=str, default='', help='Specify the path 
 parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_model1', type=str, default='', help='Specify the dir to al the trained models')
 parser.add_argument('--path_model2', type=str, default='', help='Specify the dir to al the trained models')
+parser.add_argument('--path_model3', type=str, default='', help='Specify the dir to al the trained models')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the segmentations')
 
 
@@ -118,6 +119,11 @@ def main(args):
         models2.append(UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
                     strides=(2, 2, 2, 2),num_res_units=0).to(device))
 
+    models3 = []
+    for i in range(K):
+        models3.append(UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
+                    strides=(2, 2, 2, 2),num_res_units=0).to(device))
+
     act = Activations(softmax=True)
     
     for i, model in enumerate(models1):
@@ -128,6 +134,9 @@ def main(args):
         model.load_state_dict(torch.load(args.path_model2 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
         model.eval()
 
+    for i, model in enumerate(models3):
+        model.load_state_dict(torch.load(args.path_model3 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
+        model.eval()
 
     print()
     print('Running the inference, please wait... ')
@@ -137,6 +146,7 @@ def main(args):
     
     model1_dsc = []
     model2_dsc = []
+    model3_dsc = []
 
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
@@ -228,23 +238,62 @@ def main(args):
                 model2_dsc.append(value.sum().item())
 
 
-    sns.regplot(x=model1_dsc, y=model2_dsc)
-    plt.xlabel("Trained on MSSEG-1")
-    plt.ylabel("Trained on PubMRI")
-    plt.savefig('scatter.png')
-    plt.clf()
+            all_outputs = []
+            for model in models3:
+                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+                outputs_o = (act(outputs))
+                outputs = act(outputs).cpu().numpy()
+                outputs = np.squeeze(outputs[0,1])
+                all_outputs.append(outputs)
+            all_outputs = np.asarray(all_outputs)
+            outputs = np.mean(all_outputs, axis=0)
+            
+            outputs[outputs>th]=1
+            outputs[outputs<th]=0
+            seg= np.squeeze(outputs)
+
+            l_min = 9
+            labeled_seg, num_labels = ndimage.label(seg)
+            label_list = np.unique(labeled_seg)
+            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
+
+            seg2 = np.zeros_like(seg)
+            for l in range(len(num_elements_by_lesion)):
+                if num_elements_by_lesion[l] > l_min:
+            # assign voxels to output
+                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+                    seg2[current_voxels[:, 0],
+                        current_voxels[:, 1],
+                        current_voxels[:, 2]] = 1
+            seg=np.copy(seg2) 
+
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+                model3_dsc.append(value)
+            else:
+                value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+                model3_dsc.append(value.sum().item())
 
 
-    # data = []
-    # for dsc1, dsc2 in zip(model1_dsc, model2_dsc):
-    #     data.append({"Training": "MSSEG-1", "DSC": dsc1})
-    #     data.append({"Training": "PubMRI", "DSC": dsc2})
-    # df = pd.DataFrame(data)
-    
-    # ax = sns.boxplot(x="Training", y="DSC", data=df)
-    # ax = sns.swarmplot(x="Training", y="DSC", data=df, color=".25")
-    # plt.savefig('box.png')
+    # sns.regplot(x=model1_dsc, y=model2_dsc)
+    # plt.xlabel("Trained on MSSEG-1")
+    # plt.ylabel("Trained on PubMRI")
+    # plt.savefig('scatter.png')
     # plt.clf()
+
+
+    data = []
+    for dsc1, dsc2, dsc3 in zip(model1_dsc, model2_dsc, model3_dsc):
+        data.append({"Training": "MSSEG-1", "DSC": dsc1})
+        data.append({"Training": "PubMRI", "DSC": dsc2})
+        data.append({"Training": "MSSEG-1 & PubMRI", "DSC": dsc3})
+    df = pd.DataFrame(data)
+    
+    ax = sns.boxplot(x="Training", y="DSC", data=df)
+    ax = sns.swarmplot(x="Training", y="DSC", data=df, color=".25")
+    plt.savefig('box.png')
+    plt.clf()
 
 
 #%%
