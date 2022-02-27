@@ -194,19 +194,28 @@ def main(args):
     all_annotations = np.asarray(all_annotations)
     # Assume each voxel position is a bernoulli distribution
     variance_map = np.mean(all_annotations, axis=0) * (1. - np.mean(all_annotations, axis=0))
-    print(variance_map[100,:,:])
 
+    # Plot voxels of model uncertainty against annotator variance
 
-    # Plot the first ground truth and corresponding prediction at a random slice
-    var_slice, unc_slice = variance_map[100,:,:], uncs[100,:,:]
-
-    sns.heatmap(unc_slice)
-    plt.savefig('unc.png')
+    sns.regplot(x=variance_map.flatten(), y=uncs.flatten())
+    plt.xlabel("Annotator variance")
+    plt.ylabel("Predictive uncertainty")
+    plt.savefig('correlation.png')
     plt.clf()
 
-    sns.heatmap(var_slice)
-    plt.savefig('var.png')
-    plt.clf()
+
+    # # Plot the first ground truth and corresponding prediction at a random slice
+    # var_slice, unc_slice = variance_map[100,:,:], uncs[100,:,:]
+
+    # sns.heatmap(unc_slice)
+    # plt.savefig('unc.png')
+    # plt.clf()
+
+    # sns.heatmap(var_slice)
+    # plt.savefig('var.png')
+    # plt.clf()
+
+
 
 
 
