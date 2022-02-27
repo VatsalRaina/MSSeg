@@ -143,6 +143,8 @@ def main(args):
             roi_size = (96, 96, 96)
             sw_batch_size = 4
 
+            print(gt.cpu().numpy().shape)
+
             all_outputs = []
             for model in models:
                 outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
