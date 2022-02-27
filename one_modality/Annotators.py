@@ -172,14 +172,15 @@ def main(args):
 
     ann_files = []
     for j in v:
-        ann_files = ann_files + [{"annotator": seg} for seg in annotator_paths[j:j+1]]
+        ann_files = ann_files + [{"image": flair[0], "annotator": seg} for seg in annotator_paths[j:j+1]]
 
     val_transforms = Compose(
     [
-        LoadNiftid(keys=["annotator"]),
-        AddChanneld(keys=["annotator"]),
-        Spacingd(keys=["annotator"], pixdim=(1.0, 1.0, 1.0), mode=("nearest")),
-        ToTensord(keys=["annotator"]),
+        LoadNiftid(keys=["image", "annotator"]),
+        AddChanneld(keys=["image", "annotator"]),
+        Spacingd(keys=["image", "annotator"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+        NormalizeIntensityd(keys=["image"], nonzero=True),
+        ToTensord(keys=["image", "annotator"]),
     ]
     )
 
