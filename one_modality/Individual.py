@@ -150,7 +150,9 @@ def main(args):
 
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
-            print(count)
+            # print(count)
+            if count < 20:
+                continue
             inputs, gt  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
                      batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
@@ -200,7 +202,7 @@ def main(args):
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                 model1_dsc.append(value.sum().item())
 
-            print(count, value)
+            print(count, value, np.sum(seg), np.sum(gt))
 
             # all_outputs = []
             # for model in models2:
