@@ -197,6 +197,9 @@ def main(args):
 
     # Plot voxels of model uncertainty against annotator variance
 
+    print(variance_map.shape)
+    print(uncs.shape)
+
     sns.regplot(x=variance_map.flatten(), y=uncs.flatten())
     plt.xlabel("Annotator variance")
     plt.ylabel("Predictive uncertainty")
