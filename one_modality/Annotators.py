@@ -143,7 +143,7 @@ def main(args):
             roi_size = (96, 96, 96)
             sw_batch_size = 4
 
-            print(gt.cpu().numpy().shape)
+            # print(gt.cpu().numpy().shape)
 
             all_outputs = []
             for model in models:
@@ -203,7 +203,7 @@ def main(args):
     print(variance_map.shape)
     print(uncs.shape)
 
-    sns.regplot(x=variance_map.flatten(), y=uncs.flatten())
+    sns.regplot(x=variance_map.flatten(), y=uncs[:,:256,:].flatten())
     plt.xlabel("Annotator variance")
     plt.ylabel("Predictive uncertainty")
     plt.savefig('correlation.png')
