@@ -29,10 +29,7 @@ parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--learning_rate', type=float, default=1e-5, help='Specify the initial learning rate')
 parser.add_argument('--n_epochs', type=int, default=200, help='Specify the number of epochs to train for')
 parser.add_argument('--seed', type=int, default=1, help='Specify the global random seed')
-parser.add_argument('--path_train_data', type=str, default='', help='Specify the path to the training data files directory')
-parser.add_argument('--path_train_gts', type=str, default='', help='Specify the path to the training gts files directory')
-parser.add_argument('--path_val_data', type=str, default='', help='Specify the path to the validation data files directory')
-parser.add_argument('--path_val_gts', type=str, default='', help='Specify the path to the validation gts files directory')
+parser.add_argument('--path_data', type=str, default='', help='Specify the path to the training data files directory')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to the trained model will be saved')
 
 # Set device
@@ -60,29 +57,29 @@ def main(args):
     # Choose device
     device = get_default_device()
 
-    root_dir = args.path_save  # Path where the trained model is saved
-
-    flair = sorted(glob(os.path.join(args.path_train_data, "*FLAIR.nii.gz")),
+    root_dir = args.path_save  # Path where the trained model is located
+    path_data = args.path_data
+    flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    t1 = sorted(glob(os.path.join(args.path_train_data, "*T1.nii.gz")),
-                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs = sorted(glob(os.path.join(args.path_train_gts, "*gt.nii")),
+    mprage = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))                    # Collect all flair images again so that I can try and run this code directly  
+    segs = sorted(glob(os.path.join(path_data, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))                   # Collect all corresponding ground truths
 
-    flair_val = sorted(glob(os.path.join(args.path_val_data, "*FLAIR.nii.gz")),
-                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    t1_val = sorted(glob(os.path.join(args.path_val_data, "*T1.nii.gz")),
-                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs_val = sorted(glob(os.path.join(args.path_val_gts, "*gt.nii")),
-                  key=lambda i: int(re.sub('\D', '', i)))                   # Collect all corresponding ground truths
+    N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
+    
+    indices = np.random.permutation(N)
+    # The overall number of patients in the training set is 15
+    v=indices[:3]
+    t=indices[3:]
 
 
     train_files=[]
     val_files=[]
-    for i in range(len(flair)):
-        train_files = train_files + [{"flair": fl, "t1":t, "label": seg} for fl, t, seg in zip(flair[i:i+1], t1[i:i+1], segs[i:i+1])]
-    for j in range(len(flair_val)):
-        val_files = val_files + [{"flair": fl, "t1":t, "label": seg} for fl, t, seg in zip(flair_val[j:j+1], t1_val[i:i+1], segs_val[j:j+1])]
+    for i in t:
+        train_files = train_files + [{"flair": fl,"mprage": mp,"label": seg} for fl, mp, seg in zip(flair[i:i+1], mprage[i:i+1], segs[i:i+1])]
+    for j in v:
+        val_files = val_files + [{"flair": fl,"mprage": mp,"label": seg} for fl, mp, seg in zip(flair[j:j+1], mprage[j:j+1], segs[j:j+1])]
     print("Training cases:", len(train_files))
     print("Validation cases:", len(val_files))
     
@@ -90,15 +87,18 @@ def main(args):
 
     train_transforms = Compose(
     [
-        LoadNiftid(keys=["flair", "t1", "label"]),        
-        AddChanneld(keys=["flair", "t1","label"]),
-        Spacingd(keys=["flair", "t1","label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear", "nearest")),
-        NormalizeIntensityd(keys=["flair", "t1"], nonzero=True),
+        LoadNiftid(keys=["flair", "mprage","label"]),
+        
+        #SqueezeDimd(keys=["flair", "mprage"], dim=-1),
+        
+        AddChanneld(keys=["flair", "mprage","label"]),
+        Spacingd(keys=["flair","mprage","label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear","nearest")),
+        NormalizeIntensityd(keys=["flair", "mprage"], nonzero=True),
         RandShiftIntensityd(keys="flair",offsets=0.1,prob=1.0),
-        RandShiftIntensityd(keys="t1",offsets=0.1,prob=1.0),
+        RandShiftIntensityd(keys="mprage",offsets=0.1,prob=1.0),
         RandScaleIntensityd(keys="flair",factors=0.1,prob=1.0),
-        RandScaleIntensityd(keys="t1",factors=0.1,prob=1.0),
-        ConcatItemsd(keys=["flair", "t1"], name="image"),
+        RandScaleIntensityd(keys="mprage",factors=0.1,prob=1.0),
+        ConcatItemsd(keys=["flair", "mprage"], name="image"),
         RandCropByPosNegLabeld(keys=["image", "label"],label_key="label",spatial_size=(128, 128, 128),
             pos=4,neg=1,num_samples=32,image_key="image"),
         RandSpatialCropd(keys=["image", "label"], roi_size=(96,96,96), random_center=True, random_size=False),
@@ -113,14 +113,37 @@ def main(args):
     )
     val_transforms = Compose(
     [
-        LoadNiftid(keys=["flair", "t1", "label"]),
-        AddChanneld(keys=["flair", "t1", "label"]),
-        Spacingd(keys=["flair", "t1", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear", "nearest")),
-        NormalizeIntensityd(keys=["flair", "t1"], nonzero=True),
-        ConcatItemsd(keys=["flair", "t1"], name="image"),
+        LoadNiftid(keys=["flair", "mprage", "label"]),
+        
+        #SqueezeDimd(keys=["flair", "mprage"], dim=-1),
+        
+        AddChanneld(keys=["flair", "mprage","label"]),
+        Spacingd(keys=["flair", "mprage","label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear","nearest")),
+        NormalizeIntensityd(keys=["flair", "mprage"], nonzero=True),
+        ConcatItemsd(keys=["flair", "mprage"], name="image"),
         ToTensord(keys=["image", "label"]),
     ]
     )
+    
+    #%% Print an example slice with segmentation
+    
+    check_ds = Dataset(data=train_files, transform=train_transforms)
+    check_loader = DataLoader(check_ds, batch_size=1)
+    check_data = first(check_loader)
+    image, label = (check_data["image"][0][0], check_data["label"][0][0])
+    mp2rage = check_data["image"][0][1]
+    # plot the slice [:, :, 80]
+    plt.figure("check", (12, 6))
+    plt.subplot(1, 3, 1)
+    plt.title("flair")
+    plt.imshow(image[:, :, 48], cmap="gray")
+    plt.subplot(1, 3, 2)
+    plt.title("mp2rage")
+    plt.imshow(mp2rage[:, :, 48], cmap="gray")
+    plt.subplot(1, 3, 3)
+    plt.title("label")
+    plt.imshow(label[:, :, 48])
+    plt.show()
 
     #%%
     train_ds = CacheDataset(data=train_files, transform=train_transforms, cache_rate=0.5, num_workers=0)
@@ -225,29 +248,29 @@ def main(args):
                     metric_sum += value.sum().item()
                 metric = metric_sum / metric_count
                 metric_values.append(metric)
-                # metric_sum_train = 0.0
-                # metric_count_train = 0
-                # for train_data in val_train_loader:
-                #     train_inputs, train_labels = (
-                #                 train_data["image"].to(device),
-                #                 train_data["label"].to(device),
-                #                 )
-                #     roi_size = (96, 96, 96)
-                #     sw_batch_size = 4
-                #     train_outputs = sliding_window_inference(train_inputs, roi_size, sw_batch_size, model,mode='gaussian')
+                metric_sum_train = 0.0
+                metric_count_train = 0
+                for train_data in val_train_loader:
+                    train_inputs, train_labels = (
+                                train_data["image"].to(device),
+                                train_data["label"].to(device),
+                                )
+                    roi_size = (96, 96, 96)
+                    sw_batch_size = 4
+                    train_outputs = sliding_window_inference(train_inputs, roi_size, sw_batch_size, model,mode='gaussian')
                     
-                #     train_labels = train_labels.cpu().numpy()
-                #     gt = np.squeeze(train_labels)
-                #     train_outputs = act(train_outputs).cpu().numpy()
-                #     seg= np.squeeze(train_outputs[0,1])
-                #     seg[seg>thresh]=1
-                #     seg[seg<thresh]=0
-                #     value_train = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+                    train_labels = train_labels.cpu().numpy()
+                    gt = np.squeeze(train_labels)
+                    train_outputs = act(train_outputs).cpu().numpy()
+                    seg= np.squeeze(train_outputs[0,1])
+                    seg[seg>thresh]=1
+                    seg[seg<thresh]=0
+                    value_train = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                     
-                #     metric_count_train += 1
-                #     metric_sum_train += value_train.sum().item()    
-                # metric_train = metric_sum_train / metric_count_train
-                # metric_values_train.append(metric_train)
+                    metric_count_train += 1
+                    metric_sum_train += value_train.sum().item()    
+                metric_train = metric_sum_train / metric_count_train
+                metric_values_train.append(metric_train)
                 if metric > best_metric:
                     best_metric = metric
                     best_metric_epoch = epoch + 1
@@ -256,7 +279,22 @@ def main(args):
                 print(f"current epoch: {epoch + 1} current mean dice: {metric:.4f}"
                                     f"\nbest mean dice: {best_metric:.4f} at epoch: {best_metric_epoch}"
                                     )
- 
+                plt.figure("train", (12, 6))
+                plt.subplot(1, 2, 1)
+                plt.title("Epoch Average Train Loss")
+                x = [i + 1 for i in range(len(epoch_loss_values))]
+                y = epoch_loss_values
+                plt.xlabel("epoch")
+                plt.plot(x, y)
+                plt.subplot(1, 2, 2)
+                plt.title("Val and Train Mean Dice")
+                x = [val_interval * (i + 1) for i in range(len(metric_values))]
+                y = metric_values
+                y1 = metric_values_train
+                plt.xlabel("epoch")
+                plt.plot(x, y)
+                plt.plot(x, y1)
+                plt.show()     
           
 #%%
 if __name__ == "__main__":
