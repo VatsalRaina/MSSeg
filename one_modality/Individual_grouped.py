@@ -289,6 +289,7 @@ def main(args):
     sns.regplot(x=lesion_loads, y=model3_dsc, label="MSSEG-1 & PubMRI")
     plt.xlabel("Lesion load (%)")
     plt.ylabel("DSC")
+    plt.ylim([-0.03, 1.0])
     plt.legend()
     plt.savefig('lesion.png')
     plt.clf()
