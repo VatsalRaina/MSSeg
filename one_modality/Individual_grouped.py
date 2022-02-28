@@ -284,11 +284,12 @@ def main(args):
 
 
 
-    sns.regplot(x=lesion_loads, y=model1_dsc, label="Trained on MSSEG-1")
-    sns.regplot(x=lesion_loads, y=model2_dsc, label="Trained on PubMRI")
-    sns.regplot(x=lesion_loads, y=model3_dsc, label="Trained on MSSEG-1 & PubMRI")
+    sns.regplot(x=lesion_loads, y=model1_dsc, label="MSSEG-1")
+    sns.regplot(x=lesion_loads, y=model2_dsc, label="PubMRI")
+    sns.regplot(x=lesion_loads, y=model3_dsc, label="MSSEG-1 & PubMRI")
     plt.xlabel("Lesion load (%)")
     plt.ylabel("DSC")
+    plt.legend()
     plt.savefig('lesion.png')
     plt.clf()
 
