@@ -82,7 +82,7 @@ def main(args):
     for i in range(len(flair)):
         train_files = train_files + [{"flair": fl, "t1":t, "label": seg} for fl, t, seg in zip(flair[i:i+1], t1[i:i+1], segs[i:i+1])]
     for j in range(len(flair_val)):
-        val_files = val_files + [{"flair": fl, "t1":t, "label": seg} for fl, t, seg in zip(flair_val[j:j+1], t1_val[i:i+1], segs_val[j:j+1])]
+        val_files = val_files + [{"flair": fl, "t1":t, "label": seg} for fl, t, seg in zip(flair_val[j:j+1], t1_val[j:j+1], segs_val[j:j+1])]
     print("Training cases:", len(train_files))
     print("Validation cases:", len(val_files))
     
