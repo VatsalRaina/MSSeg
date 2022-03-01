@@ -97,7 +97,7 @@ def main(args):
     [
         LoadNiftid(keys=["flair", "t1", "label"]),
         AddChanneld(keys=["flair", "t1", "label"]),
-        Spacingd(keys=["flair", "t1", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear" "nearest")),
+        Spacingd(keys=["flair", "t1", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear", "nearest")),
         NormalizeIntensityd(keys=["flair", "t1"], nonzero=True),
         ConcatItemsd(keys=["flair", "t1"], name="image"),
         ToTensord(keys=["image", "label"]),
