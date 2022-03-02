@@ -137,7 +137,7 @@ def main(args):
     gt, fl, t1, fl_un, t1_un = all_groundTruths[patient_num-1], all_flair[patient_num-1], all_t1[patient_num-1], all_flair_un[patient_num-1], all_t1_un[patient_num-1]
 
     slice_num = 100
-    gt_slice, fl_slice, t1_slice, fl_un_slice, t1_un_slice = np.rot90(gt[slice_num,:,:]), np.rot90(fl[slice_num,:,:]), np.rot90(t1[slice_num,:,:]), np.rot90(fl_un[slice_num,:,:]), np.rot90(t1_un[slice_num,:,:])
+    gt_slice, fl_slice, t1_slice, fl_un_slice, t1_un_slice = np.rot90(gt[slice_num,:,:], 3), np.rot90(fl[slice_num,:,:], 3), np.rot90(t1[slice_num,:,:], 3), np.rot90(fl_un[slice_num,:,:], 3), np.rot90(t1_un[slice_num,:,:], 3)
 
     ax = sns.heatmap(fl_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
     ax.invert_yaxis()
