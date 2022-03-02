@@ -31,6 +31,7 @@ import seaborn as sns; sns.set_theme()
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test data files directory')
+parser.add_argument('--path_unprocessed_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the images along a given axis')
 
 # Set device
@@ -61,6 +62,10 @@ def main(args):
     segs = sorted(glob(os.path.join(args.path_gts, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))        
 
+    flair_un = sorted(glob(os.path.join(args.path_unprocessed_data, "*FLAIR.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
+    t1_un = sorted(glob(os.path.join(args.path_unprocessed_data, "*T1.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))
 
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
     
@@ -71,7 +76,7 @@ def main(args):
 
     test_files=[]
     for j in v:
-        test_files = test_files + [{"flair": fl, "t1":t, "label": seg} for fl, t, seg in zip(flair[j:j+1], t1[j:j+1], segs[j:j+1])]
+        test_files = test_files + [{"flair": fl, "t1":t, "flair_un":fl_un, "t1_un": t_un, "label": seg} for fl, t, fl_un, t_un, seg in zip(flair[j:j+1], t1[j:j+1], flair_un[j:j+1], t1_un[j:j+1], segs[j:j+1])]
 
     print("Testing cases:", len(test_files))
     
@@ -89,11 +94,11 @@ def main(args):
    
     val_transforms = Compose(
     [
-        LoadNiftid(keys=["flair", "t1", "label"]),
-        AddChanneld(keys=["flair", "t1", "label"]),
-        Spacingd(keys=["flair", "t1", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear", "nearest")),
+        LoadNiftid(keys=["flair", "t1", "flair_un", "t1_un", "label"]),
+        AddChanneld(keys=["flair", "t1", "flair_un", "t1_un", "label"]),
+        Spacingd(keys=["flair", "t1", "flair_un", "t1_un", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear", "bilinear", "bilinear" "nearest")),
         NormalizeIntensityd(keys=["flair", "t1"], nonzero=True),
-        ConcatItemsd(keys=["flair", "t1"], name="image"),
+        ConcatItemsd(keys=["flair", "t1", "flair_un", "t1_un"], name="image"),
         ToTensord(keys=["image", "label"]),
     ]
     )
@@ -108,6 +113,8 @@ def main(args):
     all_groundTruths = []
     all_flair = []
     all_t1 = []
+    all_flair_un = []
+    all_t1_un = []
 
     with torch.no_grad():
         metric_sum = 0.0
@@ -123,12 +130,14 @@ def main(args):
             all_groundTruths.append(gt)
             all_flair.append(inputs.cpu().numpy()[0][0])
             all_t1.append(inputs.cpu().numpy()[0][1])
+            all_flair_un.append(inputs.cpu().numpy()[0][2])
+            all_t1_un.append(inputs.cpu().numpy()[0][3])
 
     patient_num = 1        
-    gt, fl, t1 = all_groundTruths[patient_num-1], all_flair[patient_num-1], all_t1[patient_num-1]
+    gt, fl, t1, fl_un, t1_un = all_groundTruths[patient_num-1], all_flair[patient_num-1], all_t1[patient_num-1], all_flair_un[patient_num-1], all_t1_un[patient_num-1]
 
     slice_num = 100
-    gt_slice, fl_slice, t1_slice = np.rot90(gt[slice_num,:,:]), np.rot90(fl[slice_num,:,:]), np.rot90(t1[slice_num,:,:])
+    gt_slice, fl_slice, t1_slice, fl_un_slice, t1_un_slice = np.rot90(gt[slice_num,:,:]), np.rot90(fl[slice_num,:,:]), np.rot90(t1[slice_num,:,:]), np.rot90(fl_un[slice_num,:,:]), np.rot90(t1_un[slice_num,:,:])
 
     ax = sns.heatmap(fl_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
     ax.invert_yaxis()
@@ -138,6 +147,16 @@ def main(args):
     ax = sns.heatmap(t1_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
     ax.invert_yaxis()
     plt.savefig(args.path_save + str(patient_num) + 't1.png')
+    plt.clf()
+
+    ax = sns.heatmap(fl_un_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+    ax.invert_yaxis()
+    plt.savefig(args.path_save + str(patient_num) + 'flair_un.png')
+    plt.clf()
+
+    ax = sns.heatmap(t1_un_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+    ax.invert_yaxis()
+    plt.savefig(args.path_save + str(patient_num) + 't1_un.png')
     plt.clf()
 
     ax = sns.heatmap(gt_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
