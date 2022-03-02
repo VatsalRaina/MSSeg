@@ -29,12 +29,9 @@ import matplotlib.cm as cm
 import seaborn as sns; sns.set_theme()
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
-parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
-parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
+parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the images along a given axis')
-
-
 
 # Set device
 def get_default_device():
@@ -62,7 +59,7 @@ def main(args):
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
     t1 = sorted(glob(os.path.join(path_data, "*T1.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))
-    segs = sorted(glob(os.path.join(path_data, "*gt.nii")),
+    segs = sorted(glob(os.path.join(args.path_gts, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))        
 
 
@@ -108,9 +105,6 @@ def main(args):
          
     print()
     print('Running the inference, please wait... ')
-    
-    th = args.threshold
-
     
     all_groundTruths = []
     all_flair = []
