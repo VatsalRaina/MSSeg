@@ -76,7 +76,7 @@ def main(args):
 
     test_files=[]
     for j in v:
-        test_files = test_files + [{"flair": fl, "t1":t, "flair_un":fl_un, "t1_un": t_un, "label": seg} for fl, t, fl_un, t_un, seg in zip(flair[j:j+1], t1[j:j+1], flair_un[j:j+1], t1_un[j:j+1], segs[j:j+1])]
+        test_files = test_files + [{"flair": fl, "t1":t, "flair_un":fl_un, "t1_un":t_un, "label": seg} for fl, t, fl_un, t_un, seg in zip(flair[j:j+1], t1[j:j+1], flair_un[j:j+1], t1_un[j:j+1], segs[j:j+1])]
 
     print("Testing cases:", len(test_files))
     
@@ -96,7 +96,7 @@ def main(args):
     [
         LoadNiftid(keys=["flair", "t1", "flair_un", "t1_un", "label"]),
         AddChanneld(keys=["flair", "t1", "flair_un", "t1_un", "label"]),
-        Spacingd(keys=["flair", "t1", "flair_un", "t1_un", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear", "bilinear", "bilinear" "nearest")),
+        Spacingd(keys=["flair", "t1", "flair_un", "t1_un", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear", "bilinear", "bilinear", "nearest")),
         NormalizeIntensityd(keys=["flair", "t1"], nonzero=True),
         ConcatItemsd(keys=["flair", "t1", "flair_un", "t1_un"], name="image"),
         ToTensord(keys=["image", "label"]),
