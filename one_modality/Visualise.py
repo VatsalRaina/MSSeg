@@ -53,7 +53,6 @@ def main(args):
     # Choose device
     device = get_default_device()
 
-    root_dir= args.path_model  # Path where the trained model is saved
     path_data = args.path_data  # Path where the data is
     flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
