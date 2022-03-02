@@ -132,31 +132,32 @@ def main(args):
             all_t1.append(inputs.cpu().numpy()[0][1])
             all_flair_un.append(inputs.cpu().numpy()[0][2])
 
-    patient_num = 1        
-    gt, fl, t1, fl_un = all_groundTruths[patient_num-1], all_flair[patient_num-1], all_t1[patient_num-1], all_flair_un[patient_num-1]
+    patient_nums = [1, 2, 3]
+    for patient_num in patient_nums:        
+        gt, fl, t1, fl_un = all_groundTruths[patient_num-1], all_flair[patient_num-1], all_t1[patient_num-1], all_flair_un[patient_num-1]
 
-    slice_num = 100
-    gt_slice, fl_slice, t1_slice, fl_un_slice= np.rot90(gt[slice_num,:,:], 3), np.rot90(fl[slice_num,:,:], 3), np.rot90(t1[slice_num,:,:], 3), np.rot90(fl_un[slice_num,:,:], 3)
+        slice_num = 100
+        gt_slice, fl_slice, t1_slice, fl_un_slice= np.rot90(gt[slice_num,:,:], 3), np.rot90(fl[slice_num,:,:], 3), np.rot90(t1[slice_num,:,:], 3), np.rot90(fl_un[slice_num,:,:], 3)
 
-    ax = sns.heatmap(fl_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
-    ax.invert_yaxis()
-    plt.savefig(args.path_save + str(patient_num) + 'flair.png')
-    plt.clf()
+        ax = sns.heatmap(fl_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+        ax.invert_yaxis()
+        plt.savefig(args.path_save + str(patient_num) + 'flair.png')
+        plt.clf()
 
-    ax = sns.heatmap(t1_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
-    ax.invert_yaxis()
-    plt.savefig(args.path_save + str(patient_num) + 't1.png')
-    plt.clf()
+        ax = sns.heatmap(t1_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+        ax.invert_yaxis()
+        plt.savefig(args.path_save + str(patient_num) + 't1.png')
+        plt.clf()
 
-    ax = sns.heatmap(fl_un_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
-    ax.invert_yaxis()
-    plt.savefig(args.path_save + str(patient_num) + 'flair_un.png')
-    plt.clf()
+        ax = sns.heatmap(fl_un_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+        ax.invert_yaxis()
+        plt.savefig(args.path_save + str(patient_num) + 'flair_un.png')
+        plt.clf()
 
-    ax = sns.heatmap(gt_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
-    ax.invert_yaxis()
-    plt.savefig(args.path_save + str(patient_num) + 'gt.png')
-    plt.clf()
+        ax = sns.heatmap(gt_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+        ax.invert_yaxis()
+        plt.savefig(args.path_save + str(patient_num) + 'gt.png')
+        plt.clf()
 
 #%%
 if __name__ == "__main__":
