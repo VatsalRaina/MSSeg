@@ -196,11 +196,14 @@ def main(args):
 
 
     data = []
-    for dsc1, dsc2, dsc3, dsc4 in zip(verio_dsc, discovery_dsc, aera_dsc, ingenia_dsc):
-        data.append({"Scanner": "Verio", "DSC": dsc1})
-        data.append({"Scanner": "Discovery", "DSC": dsc2})
-        data.append({"Scanner": "Aera", "DSC": dsc3})
-        data.append({"Scanner": "Ingenia", "DSC": dsc4})
+    for dsc in verio_dsc:
+        data.append({"Scanner": "Verio", "DSC": dsc})
+    for dsc in discovery_dsc:
+        data.append({"Scanner": "Discovery", "DSC": dsc})
+    for dsc in aera_dsc:
+        data.append({"Scanner": "Aera", "DSC": dsc})
+    for dsc in ingenia_dsc:
+        data.append({"Scanner": "Ingenia", "DSC": dsc})
     df = pd.DataFrame(data)
     
     ax = sns.boxplot(x="Scanner", y="DSC", data=df)
