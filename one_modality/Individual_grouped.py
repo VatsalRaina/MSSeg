@@ -284,9 +284,9 @@ def main(args):
 
 
 
-    sns.regplot(x=lesion_loads, y=model1_dsc, label="MSSEG-1")
-    sns.regplot(x=lesion_loads, y=model2_dsc, label="PubMRI")
-    sns.regplot(x=lesion_loads, y=model3_dsc, label="MSSEG-1 & PubMRI")
+    sns.scatterplot(x=lesion_loads, y=model1_dsc, label="MSSEG-1")
+    sns.scatterplot(x=lesion_loads, y=model2_dsc, label="PubMRI")
+    sns.scatterplot(x=lesion_loads, y=model3_dsc, label="MSSEG-1 & PubMRI")
     plt.xlabel("Lesion load (%)")
     plt.ylabel("DSC")
     plt.ylim([-0.03, 1.0])
