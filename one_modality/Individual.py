@@ -284,7 +284,7 @@ def main(args):
     plt.xlabel("Trained on MSSEG-1")
     plt.ylabel("Trained on PubMRI")
     plt.xlim([0,1])
-    plt.ylim[0,1]
+    plt.ylim([0,1])
     plt.savefig('scatter.png')
     plt.clf()
 
