@@ -295,19 +295,6 @@ def main(args):
     plt.clf()
 
 
-    # data = []
-    # for dsc1, dsc2, dsc3 in zip(model1_dsc, model2_dsc, model3_dsc):
-    #     data.append({"Training": "MSSEG-1", "DSC": dsc1})
-    #     data.append({"Training": "PubMRI", "DSC": dsc2})
-    #     data.append({"Training": "MSSEG-1 & PubMRI", "DSC": dsc3})
-    # df = pd.DataFrame(data)
-    
-    # ax = sns.boxplot(x="Training", y="DSC", data=df)
-    # ax = sns.swarmplot(x="Training", y="DSC", data=df, color=".25")
-    # plt.savefig('box.png')
-    # plt.clf()
-
-
 #%%
 if __name__ == "__main__":
     args = parser.parse_args()
