@@ -132,7 +132,7 @@ def main(args):
             all_t1.append(inputs.cpu().numpy()[0][1])
             all_flair_un.append(inputs.cpu().numpy()[0][2])
 
-    patient_nums = [1, 2, 3]
+    patient_nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     for patient_num in patient_nums:        
         gt, fl, t1, fl_un = all_groundTruths[patient_num-1], all_flair[patient_num-1], all_t1[patient_num-1], all_flair_un[patient_num-1]
 
