@@ -64,7 +64,7 @@ def main(args):
                   key=lambda i: int(re.sub('\D', '', i)))  
 
 
-    N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
+    N = (len(t1)) # Number of subjects for training/validation, by default using all subjects in the folder
     
     # np.random.seed(111)
     # indices = np.random.permutation(N)
