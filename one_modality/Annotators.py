@@ -232,9 +232,9 @@ def main(args):
 
     data = []
     for var, unc in zip(filtered_variance_map, filtered_uncs):
-        data.append({"Annotator Variance": var, "Predictive Uncertainty": unc})
+        data.append({"Annotator Variance": str(round(var, 2)), "Predictive Uncertainty": unc})
     df = pd.DataFrame(data)
-    ax = sns.violinplot(x="Annotator Variance", y="Predictive Uncertainty", data=df)
+    ax = sns.boxplot(x="Annotator Variance", y="Predictive Uncertainty", data=df)
     plt.savefig('correlation.png')
     plt.clf()
 
