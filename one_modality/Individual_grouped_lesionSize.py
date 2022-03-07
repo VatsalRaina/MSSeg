@@ -288,8 +288,7 @@ def main(args):
             mean_lesion = np.mean(num_elements_by_lesion)
             min_lesion = np.min(num_elements_by_lesion)
             max_lesion = np.max(num_elements_by_lesion)            
-
-            break
+            
 
 
 
