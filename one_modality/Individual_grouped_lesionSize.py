@@ -205,80 +205,80 @@ def main(args):
 
             print(count, value, np.sum(seg), np.sum(gt))
 
-            all_outputs = []
-            for model in models2:
-                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-                outputs_o = (act(outputs))
-                outputs = act(outputs).cpu().numpy()
-                outputs = np.squeeze(outputs[0,1])
-                all_outputs.append(outputs)
-            all_outputs = np.asarray(all_outputs)
-            outputs = np.mean(all_outputs, axis=0)
+            # all_outputs = []
+            # for model in models2:
+            #     outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+            #     outputs_o = (act(outputs))
+            #     outputs = act(outputs).cpu().numpy()
+            #     outputs = np.squeeze(outputs[0,1])
+            #     all_outputs.append(outputs)
+            # all_outputs = np.asarray(all_outputs)
+            # outputs = np.mean(all_outputs, axis=0)
             
-            outputs[outputs>th]=1
-            outputs[outputs<th]=0
-            seg= np.squeeze(outputs)
+            # outputs[outputs>th]=1
+            # outputs[outputs<th]=0
+            # seg= np.squeeze(outputs)
 
-            l_min = 9
-            labeled_seg, num_labels = ndimage.label(seg)
-            label_list = np.unique(labeled_seg)
-            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
+            # l_min = 9
+            # labeled_seg, num_labels = ndimage.label(seg)
+            # label_list = np.unique(labeled_seg)
+            # num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
 
-            seg2 = np.zeros_like(seg)
-            for l in range(len(num_elements_by_lesion)):
-                if num_elements_by_lesion[l] > l_min:
-            # assign voxels to output
-                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
-                    seg2[current_voxels[:, 0],
-                        current_voxels[:, 1],
-                        current_voxels[:, 2]] = 1
-            seg=np.copy(seg2) 
+            # seg2 = np.zeros_like(seg)
+            # for l in range(len(num_elements_by_lesion)):
+            #     if num_elements_by_lesion[l] > l_min:
+            # # assign voxels to output
+            #         current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+            #         seg2[current_voxels[:, 0],
+            #             current_voxels[:, 1],
+            #             current_voxels[:, 2]] = 1
+            # seg=np.copy(seg2) 
 
-            im_sum = np.sum(seg) + np.sum(gt)
-            if im_sum == 0:
-                value = 1.0
-                model2_dsc.append(value)
-            else:
-                value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-                model2_dsc.append(value.sum().item())
+            # im_sum = np.sum(seg) + np.sum(gt)
+            # if im_sum == 0:
+            #     value = 1.0
+            #     model2_dsc.append(value)
+            # else:
+            #     value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+            #     model2_dsc.append(value.sum().item())
 
 
-            all_outputs = []
-            for model in models3:
-                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-                outputs_o = (act(outputs))
-                outputs = act(outputs).cpu().numpy()
-                outputs = np.squeeze(outputs[0,1])
-                all_outputs.append(outputs)
-            all_outputs = np.asarray(all_outputs)
-            outputs = np.mean(all_outputs, axis=0)
+            # all_outputs = []
+            # for model in models3:
+            #     outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+            #     outputs_o = (act(outputs))
+            #     outputs = act(outputs).cpu().numpy()
+            #     outputs = np.squeeze(outputs[0,1])
+            #     all_outputs.append(outputs)
+            # all_outputs = np.asarray(all_outputs)
+            # outputs = np.mean(all_outputs, axis=0)
             
-            outputs[outputs>th]=1
-            outputs[outputs<th]=0
-            seg= np.squeeze(outputs)
+            # outputs[outputs>th]=1
+            # outputs[outputs<th]=0
+            # seg= np.squeeze(outputs)
 
-            l_min = 9
-            labeled_seg, num_labels = ndimage.label(seg)
-            label_list = np.unique(labeled_seg)
-            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
+            # l_min = 9
+            # labeled_seg, num_labels = ndimage.label(seg)
+            # label_list = np.unique(labeled_seg)
+            # num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
 
-            seg2 = np.zeros_like(seg)
-            for l in range(len(num_elements_by_lesion)):
-                if num_elements_by_lesion[l] > l_min:
-            # assign voxels to output
-                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
-                    seg2[current_voxels[:, 0],
-                        current_voxels[:, 1],
-                        current_voxels[:, 2]] = 1
-            seg=np.copy(seg2) 
+            # seg2 = np.zeros_like(seg)
+            # for l in range(len(num_elements_by_lesion)):
+            #     if num_elements_by_lesion[l] > l_min:
+            # # assign voxels to output
+            #         current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+            #         seg2[current_voxels[:, 0],
+            #             current_voxels[:, 1],
+            #             current_voxels[:, 2]] = 1
+            # seg=np.copy(seg2) 
 
-            im_sum = np.sum(seg) + np.sum(gt)
-            if im_sum == 0:
-                value = 1.0
-                model3_dsc.append(value)
-            else:
-                value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-                model3_dsc.append(value.sum().item())
+            # im_sum = np.sum(seg) + np.sum(gt)
+            # if im_sum == 0:
+            #     value = 1.0
+            #     model3_dsc.append(value)
+            # else:
+            #     value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+            #     model3_dsc.append(value.sum().item())
 
 
             labelled_gt, _ = ndimage.label(gt)
@@ -295,10 +295,10 @@ def main(args):
 
 
 
-    sns.scatterplot(x=lesion_size_mean, y=model1_dsc, label="MSSEG-1")
-    sns.scatterplot(x=lesion_size_mean, y=model2_dsc, label="PubMRI")
-    sns.scatterplot(x=lesion_size_mean, y=model3_dsc, label="MSSEG-1 & PubMRI")
-    plt.xlabel("Lesion load (%)")
+    sns.scatterplot(x=lesion_size_min, y=model1_dsc, label="Min")
+    sns.scatterplot(x=lesion_size_mean, y=model1_dsc, label="Mean")
+    sns.scatterplot(x=lesion_size_max, y=model1_dsc, label="Max")
+    plt.xlabel(r"Lesion Size ($mm^3$)")
     plt.ylabel("DSC")
     plt.ylim([-0.03, 1.0])
     plt.legend()
