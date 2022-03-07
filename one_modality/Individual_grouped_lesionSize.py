@@ -299,6 +299,7 @@ def main(args):
     sns.scatterplot(x=lesion_size_mean, y=model1_dsc, label="Mean")
     sns.scatterplot(x=lesion_size_max, y=model1_dsc, label="Max")
     plt.xlabel(r"Lesion Size ($mm^3$)")
+    plt.xscale('log')
     plt.ylabel("DSC")
     plt.ylim([-0.03, 1.0])
     plt.legend()
