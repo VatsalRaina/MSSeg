@@ -279,7 +279,7 @@ def main(args):
             #     model3_dsc.append(value.sum().item())
 
 
-            labelled_gt = ndimage.label(gt)
+            labelled_gt, _ = ndimage.label(gt)
             label_list = np.unique(labelled_gt)
             num_elements_by_lesion = ndimage.labeled_comprehension(gt,labelled_gt,label_list,np.sum,float, 0)
             print(num_elements_by_lesion)
