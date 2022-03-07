@@ -172,8 +172,8 @@ def main(args):
             # outputs[outputs<th]=0
             # seg= np.squeeze(outputs)
   
-            # val_labels = gt.cpu().numpy()
-            # gt = np.squeeze(val_labels)
+            val_labels = gt.cpu().numpy()
+            gt = np.squeeze(val_labels)
 
             # """
             # Remove connected components smaller than 10 voxels
