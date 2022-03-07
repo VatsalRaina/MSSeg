@@ -160,6 +160,8 @@ def main(args):
 
             break
 
+    model_seg = outputs
+
     # Get annotator variance at each voxel position
 
     annotator_paths = []
@@ -203,11 +205,15 @@ def main(args):
     print(variance_map.shape)
     print(uncs.shape)
 
-    sns.regplot(x=variance_map.flatten(), y=uncs[:,:256,:].flatten())
-    plt.xlabel("Annotator variance")
-    plt.ylabel("Predictive uncertainty")
-    plt.savefig('correlation.png')
-    plt.clf()
+    # Get rid of extra slice
+    model_seg = model_seg[:,:256,:]
+    uncs = uncs[:,:256,:]
+
+    # sns.regplot(x=variance_map.flatten(), y=uncs[:,:256,:].flatten())
+    # plt.xlabel("Annotator variance")
+    # plt.ylabel("Predictive uncertainty")
+    # plt.savefig('correlation.png')
+    # plt.clf()
 
 
     # # Plot the first ground truth and corresponding prediction at a random slice
