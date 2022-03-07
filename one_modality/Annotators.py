@@ -196,6 +196,10 @@ def main(args):
             annotations  = (batch_data["annotator"].to(device).cpu().numpy())
             all_annotations.append(annotations[0][0].astype(float))
     
+    annotator_union = all_annotations[0]
+    for i in range(1,7):
+        annotator_union = np.logical_or(annotator_union, all_annotations[i])
+
     all_annotations = np.asarray(all_annotations)
     # Assume each voxel position is a bernoulli distribution
     variance_map = np.mean(all_annotations, axis=0) * (1. - np.mean(all_annotations, axis=0))
@@ -209,11 +213,21 @@ def main(args):
     model_seg = model_seg[:,:256,:]
     uncs = uncs[:,:256,:]
 
-    # sns.regplot(x=variance_map.flatten(), y=uncs[:,:256,:].flatten())
-    # plt.xlabel("Annotator variance")
-    # plt.ylabel("Predictive uncertainty")
-    # plt.savefig('correlation.png')
-    # plt.clf()
+    voxels_to_plot = np.logical_or(model_seg, annotator_union)
+
+    # Flatten everything
+    variance_map = variance_map.flatten()
+    uncs = uncs.flatten()
+    voxels_to_plot = voxels_to_plot.flatten()
+
+    filtered_variance_map = variance_map[voxels_to_plot==1]
+    filtered_uncs = uncs[voxels_to_plot==1]
+
+    sns.scatterplot(x=filtered_variance_map, y=filtered_uncs)
+    plt.xlabel("Annotator variance")
+    plt.ylabel("Predictive uncertainty")
+    plt.savefig('correlation.png')
+    plt.clf()
 
 
     # # Plot the first ground truth and corresponding prediction at a random slice
