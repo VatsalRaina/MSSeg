@@ -27,6 +27,7 @@ from scipy import ndimage
 
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set_theme()
+import pandas as pd
 from sklearn import metrics
 
 from Uncertainty import ensemble_uncertainties_classification
@@ -223,12 +224,19 @@ def main(args):
     filtered_variance_map = variance_map[voxels_to_plot==1]
     filtered_uncs = uncs[voxels_to_plot==1]
 
-    sns.scatterplot(x=filtered_variance_map, y=filtered_uncs)
-    plt.xlabel("Annotator variance")
-    plt.ylabel("Predictive uncertainty")
+    # sns.scatterplot(x=filtered_variance_map, y=filtered_uncs)
+    # plt.xlabel("Annotator variance")
+    # plt.ylabel("Predictive uncertainty")
+    # plt.savefig('correlation.png')
+    # plt.clf()
+
+    data = []
+    for var, unc in zip(filtered_variance_map, filtered_uncs):
+        data.append({"Annotator Variance": var, "Predictive Uncertainty": unc})
+    df = pd.DataFrame(data)
+    ax = sns.boxplot(x="Annotator Variance", y="Predictive Uncertainty", data=df)
     plt.savefig('correlation.png')
     plt.clf()
-
 
     # # Plot the first ground truth and corresponding prediction at a random slice
     # var_slice, unc_slice = variance_map[100,:,:], uncs[100,:,:]
