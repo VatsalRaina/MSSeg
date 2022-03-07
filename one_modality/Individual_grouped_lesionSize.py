@@ -303,7 +303,7 @@ def main(args):
     plt.ylabel("DSC")
     plt.ylim([-0.03, 1.0])
     plt.legend()
-    plt.savefig('lesionSize.png')
+    plt.savefig('lesionSize.png', bbox_inches="tight")
     plt.clf()
 
 
