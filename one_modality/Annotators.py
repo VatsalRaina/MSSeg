@@ -38,9 +38,9 @@ parser.add_argument('--num_models', type=int, default=5, help='Number of models 
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--num_annotators', type=int, default=3, help='The number of annotators')
-parser.add_argument('--path_model', type=str, default='', help='Specify the dir to al the trained models')
+parser.add_argument('--path_model', type=str, default='', help='Specify the dir to all the trained models')
 parser.add_argument('--patient_num', type=int, default=0, help='Specify 1 patient to permit parallel processing')
-
+parser.add_argument('--path_save', type=str, default='', help='Specify the dir to save images')
 
 
 # Set device
@@ -132,6 +132,9 @@ def main(args):
 
     num_patients = 0
 
+    all_uncs = []
+    all_modelSegs = []
+
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
             num_patients += 1
@@ -159,23 +162,11 @@ def main(args):
             # Get all uncertainties
             uncs = ensemble_uncertainties_classification( np.concatenate( (np.expand_dims(all_outputs, axis=-1), np.expand_dims(1.-all_outputs, axis=-1)), axis=-1) )["reverse_mutual_information"]
 
-            break
+            all_uncs.append(uncs)
+            all_modelSegs.append(outputs)
+            # break
 
-    model_seg = outputs
-
-    # Get annotator variance at each voxel position
-
-    annotator_paths = []
-    for annotator_num in range(1, args.num_annotators+1):
-        path = args.path_gts + "annotator" + str(annotator_num) + "/1_ann" + str(annotator_num) + ".nii.gz"
-        annotator_paths.append(path)
-
-    indices = np.arange(args.num_annotators)
-    v=indices[:]
-
-    ann_files = []
-    for j in v:
-        ann_files = ann_files + [{"image": flair[0], "annotator": seg} for seg in annotator_paths[j:j+1]]
+    # model_seg = outputs
 
     val_transforms = Compose(
     [
@@ -187,57 +178,78 @@ def main(args):
     ]
     )
 
-    val_ds = CacheDataset(data=ann_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
-    val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
+    for count in range(len(all_modelSegs)):
 
-    all_annotations = []
-    with torch.no_grad():
-        for count, batch_data in enumerate(val_loader):
-            num_patients += 1
-            annotations  = (batch_data["annotator"].to(device).cpu().numpy())
-            all_annotations.append(annotations[0][0].astype(float))
-    
-    annotator_union = all_annotations[0]
-    for i in range(1,7):
-        annotator_union = np.logical_or(annotator_union, all_annotations[i])
+        model_seg = all_modelSegs[count]
+        uncs = all_uncs[count]
+        patient_num = count + 1
 
-    all_annotations = np.asarray(all_annotations)
-    # Assume each voxel position is a bernoulli distribution
-    variance_map = np.mean(all_annotations, axis=0) * (1. - np.mean(all_annotations, axis=0))
+        # Get annotator variance at each voxel position
 
-    # Plot voxels of model uncertainty against annotator variance
+        annotator_paths = []
+        for annotator_num in range(1, args.num_annotators+1):
+            path = args.path_gts + "annotator" + str(annotator_num) + "/" + str(patient_num) + "_ann" + str(annotator_num) + ".nii.gz"
+            annotator_paths.append(path)
 
-    print(variance_map.shape)
-    print(uncs.shape)
+        indices = np.arange(args.num_annotators)
 
-    # Get rid of extra slice
-    model_seg = model_seg[:,:256,:]
-    uncs = uncs[:,:256,:]
+        v=indices[:]
 
-    voxels_to_plot = np.logical_or(model_seg, annotator_union)
+        ann_files = []
+        for j in v:
+            ann_files = ann_files + [{"image": flair[0], "annotator": seg} for seg in annotator_paths[j:j+1]]
 
-    # Flatten everything
-    variance_map = variance_map.flatten()
-    uncs = uncs.flatten()
-    voxels_to_plot = voxels_to_plot.flatten()
+        val_ds = CacheDataset(data=ann_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
+        val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
 
-    filtered_variance_map = variance_map[voxels_to_plot==1]
-    filtered_uncs = uncs[voxels_to_plot==1]
+        all_annotations = []
+        with torch.no_grad():
+            for count, batch_data in enumerate(val_loader):
+                num_patients += 1
+                annotations  = (batch_data["annotator"].to(device).cpu().numpy())
+                all_annotations.append(annotations[0][0].astype(float))
+        
+        annotator_union = all_annotations[0]
+        for i in range(1,7):
+            annotator_union = np.logical_or(annotator_union, all_annotations[i])
 
-    # sns.scatterplot(x=filtered_variance_map, y=filtered_uncs)
-    # plt.xlabel("Annotator variance")
-    # plt.ylabel("Predictive uncertainty")
-    # plt.savefig('correlation.png')
-    # plt.clf()
+        all_annotations = np.asarray(all_annotations)
+        # Assume each voxel position is a bernoulli distribution
+        variance_map = np.mean(all_annotations, axis=0) * (1. - np.mean(all_annotations, axis=0))
 
-    data = []
-    for var, unc in zip(filtered_variance_map, filtered_uncs):
-        data.append({"Annotator Variance": str(round(var, 2)), "Predictive Uncertainty": unc})
-    df = pd.DataFrame(data)
-    ax = sns.boxplot(x="Annotator Variance", y="Predictive Uncertainty", data=df, fliersize=0)
-    plt.ylim([-0.03, 0.45])
-    plt.savefig('correlation.png')
-    plt.clf()
+        # Plot voxels of model uncertainty against annotator variance
+
+        # print(variance_map.shape)
+        # print(uncs.shape)
+
+        # Get rid of extra slice
+        model_seg = model_seg[:,:256,:]
+        uncs = uncs[:,:256,:]
+
+        voxels_to_plot = np.logical_or(model_seg, annotator_union)
+
+        # Flatten everything
+        variance_map = variance_map.flatten()
+        uncs = uncs.flatten()
+        voxels_to_plot = voxels_to_plot.flatten()
+
+        filtered_variance_map = variance_map[voxels_to_plot==1]
+        filtered_uncs = uncs[voxels_to_plot==1]
+
+        # sns.scatterplot(x=filtered_variance_map, y=filtered_uncs)
+        # plt.xlabel("Annotator variance")
+        # plt.ylabel("Predictive uncertainty")
+        # plt.savefig('correlation.png')
+        # plt.clf()
+
+        data = []
+        for var, unc in zip(filtered_variance_map, filtered_uncs):
+            data.append({"Annotator Variance": str(round(var, 2)), "Predictive Uncertainty": unc})
+        df = pd.DataFrame(data)
+        ax = sns.boxplot(x="Annotator Variance", y="Predictive Uncertainty", data=df, fliersize=0)
+        plt.ylim([-0.03, 0.45])
+        plt.savefig(args.path_save + str(patient_num)+'correlation.png')
+        plt.clf()
 
     # # Plot the first ground truth and corresponding prediction at a random slice
     # var_slice, unc_slice = variance_map[100,:,:], uncs[100,:,:]
