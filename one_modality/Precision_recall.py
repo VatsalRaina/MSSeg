@@ -28,6 +28,8 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set_theme()
 
+from sklearn.metrics import precision_recall_curve
+
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
@@ -125,14 +127,14 @@ def main(args):
     th = args.threshold
 
     
-    # all_predictions = []
-    # all_groundTruths = []
-    # all_uncs = []
+    all_precisions = []
+    all_recalls = []
 
     with torch.no_grad():
         metric_sum = 0.0
         metric_count = 0
         for count, batch_data in enumerate(val_loader):
+            print(count)
             inputs, gt  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
                      batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
@@ -149,80 +151,58 @@ def main(args):
             all_outputs = np.asarray(all_outputs)
             outputs = np.mean(all_outputs, axis=0)
 
-            # Get all 
-            # uncs = -1 * (outputs * np.log(outputs) + (1. - outputs) * np.log(1. - outputs))
-            
-            outputs[outputs>th]=1
-            outputs[outputs<th]=0
-            seg= np.squeeze(outputs)
-  
             val_labels = gt.cpu().numpy()
             gt = np.squeeze(val_labels)
 
-            """
-            Remove connected components smaller than 10 voxels
-            """
-            l_min = 9
-            labeled_seg, num_labels = ndimage.label(seg)
-            label_list = np.unique(labeled_seg)
-            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
+            flat_outputs = outputs.flatten()
+            flat_gt = gt.flatten()
 
-            seg2 = np.zeros_like(seg)
-            for l in range(len(num_elements_by_lesion)):
-                if num_elements_by_lesion[l] > l_min:
-            # assign voxels to output
-                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
-                    seg2[current_voxels[:, 0],
-                        current_voxels[:, 1],
-                        current_voxels[:, 2]] = 1
-            seg=np.copy(seg2) 
+            precision, recall, _ = precision_recall_curve(flat_gt, flat_outputs)
+            all_precisions.append(precision)
+            all_recalls.append(recall)
 
-            # all_predictions.append(seg)
-            # all_groundTruths.append(gt)
-            # all_uncs.append(uncs)
+        #     outputs[outputs>th]=1
+        #     outputs[outputs<th]=0
+        #     seg= np.squeeze(outputs)
 
-            im_sum = np.sum(seg) + np.sum(gt)
-            if im_sum == 0:
-                value = 1.0
-                metric_sum += value
-            else:
-                value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-                metric_sum += value.sum().item()
-            metric_count += 1
+        #     """
+        #     Remove connected components smaller than 10 voxels
+        #     """
+        #     l_min = 9
+        #     labeled_seg, num_labels = ndimage.label(seg)
+        #     label_list = np.unique(labeled_seg)
+        #     num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
 
-            # # Save as predictions as nii file here in original space
+        #     seg2 = np.zeros_like(seg)
+        #     for l in range(len(num_elements_by_lesion)):
+        #         if num_elements_by_lesion[l] > l_min:
+        #     # assign voxels to output
+        #             current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+        #             seg2[current_voxels[:, 0],
+        #                 current_voxels[:, 1],
+        #                 current_voxels[:, 2]] = 1
+        #     seg=np.copy(seg2) 
 
-            # meta_data = batch_data['image_meta_dict']
-            # for i, data in enumerate(outputs_o):  
-            #     out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
 
-            # original_affine = out_meta.get("original_affine", None) if out_meta else None
-            # affine = out_meta.get("affine", None) if out_meta else None
-            # spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
-              
-            # data2=np.copy(seg)
-            # name = args.path_save+str(count+1)+".nii.gz"
-            # write_nifti(data2,name,affine=affine,target_affine=original_affine,
-            #             output_spatial_shape=spatial_shape)     
 
-        metric = metric_sum / metric_count
-        print("Dice score:", metric)
-            
-    # # Plot the first ground truth and corresponding prediction at a random slice
-    # gt, pred, unc = all_groundTruths[0], all_predictions[0], all_uncs[0]
-    # gt_slice, pred_slice, unc_slice = gt[100,:,:], pred[100,:,:], unc[100,:,:]
+        #     im_sum = np.sum(seg) + np.sum(gt)
+        #     if im_sum == 0:
+        #         value = 1.0
+        #         metric_sum += value
+        #     else:
+        #         value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+        #         metric_sum += value.sum().item()
+        #     metric_count += 1
 
-    # sns.heatmap(gt_slice)
-    # plt.savefig('gt.png')
-    # plt.clf()
+        # metric = metric_sum / metric_count
+        # print("Dice score:", metric)
 
-    # sns.heatmap(pred_slice)
-    # plt.savefig('pred.png')
-    # plt.clf()
-
-    # sns.heatmap(unc_slice)
-    # plt.savefig('unc.png')
-    # plt.clf()
+    for p, r in zip(all_precisions, all_recalls):
+        plt.plot(r, p)
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.savefig('pr.png')
+    plt.clf()
 
 #%%
 if __name__ == "__main__":
