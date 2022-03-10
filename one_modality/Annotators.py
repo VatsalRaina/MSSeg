@@ -178,6 +178,7 @@ def main(args):
     ]
     )
 
+    all_dfs = []
     for count in range(len(all_modelSegs)):
 
         model_seg = all_modelSegs[count]
@@ -246,10 +247,14 @@ def main(args):
         for var, unc in zip(filtered_variance_map, filtered_uncs):
             data.append({"Annotator Variance": str(round(var, 2)), "Predictive Uncertainty": unc})
         df = pd.DataFrame(data)
-        ax = sns.boxplot(x="Annotator Variance", y="Predictive Uncertainty", data=df, fliersize=0)
-        plt.ylim([-0.03, 0.45])
-        plt.savefig(args.path_save + str(patient_num)+'correlation.png')
-        plt.clf()
+        all_dfs.append(df)
+
+    df = pd.concat(all_dfs)
+
+    ax = sns.boxplot(x="Annotator Variance", y="Predictive Uncertainty", data=df, fliersize=0)
+    plt.ylim([-0.03, 0.45])
+    plt.savefig(args.path_save + str(patient_num)+'correlation.png')
+    plt.clf()
 
     # # Plot the first ground truth and corresponding prediction at a random slice
     # var_slice, unc_slice = variance_map[100,:,:], uncs[100,:,:]
