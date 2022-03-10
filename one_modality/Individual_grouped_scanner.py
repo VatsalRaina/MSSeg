@@ -34,6 +34,8 @@ parser.add_argument('--num_models', type=int, default=5, help='Number of models 
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_model1', type=str, default='', help='Specify the dir to all the trained models')
+parser.add_argument('--path_data2', type=str, default='', help='Specify the path to the test data files directory')
+parser.add_argument('--path_gts2', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the segmentations')
 
 # Set device
@@ -194,6 +196,84 @@ def main(args):
 
             print(patient_num)
 
+    path_data = args.path_data2  # Path where the data is
+    flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
+    segs = sorted(glob(os.path.join(args.path_gts2, "*gt.nii")),
+                  key=lambda i: int(re.sub('\D', '', i)))        
+
+
+    N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
+    
+    indices = np.arange(N)
+    v=indices[:]
+
+    test_files=[]
+    for j in v:
+        test_files = test_files + [{"image": fl, "label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
+
+    print("Testing cases:", len(test_files))
+
+    val_ds = CacheDataset(data=test_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
+    val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
+
+    magnetomTrio_dsc = []
+
+    with torch.no_grad():
+        for count, batch_data in enumerate(val_loader):
+            patient_num = count + 1
+
+            inputs, gt  = (
+                    batch_data["image"].to(device),#.unsqueeze(0),
+                     batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
+            roi_size = (96, 96, 96)
+            sw_batch_size = 4
+
+            all_outputs = []
+            for model in models1:
+                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+                outputs_o = (act(outputs))
+                outputs = act(outputs).cpu().numpy()
+                outputs = np.squeeze(outputs[0,1])
+                all_outputs.append(outputs)
+            all_outputs = np.asarray(all_outputs)
+            outputs = np.mean(all_outputs, axis=0)
+            
+            outputs[outputs>th]=1
+            outputs[outputs<th]=0
+            seg= np.squeeze(outputs)
+  
+            val_labels = gt.cpu().numpy()
+            gt = np.squeeze(val_labels)
+
+            """
+            Remove connected components smaller than 10 voxels
+            """
+            l_min = 9
+            labeled_seg, num_labels = ndimage.label(seg)
+            label_list = np.unique(labeled_seg)
+            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
+
+            seg2 = np.zeros_like(seg)
+            for l in range(len(num_elements_by_lesion)):
+                if num_elements_by_lesion[l] > l_min:
+            # assign voxels to output
+                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+                    seg2[current_voxels[:, 0],
+                        current_voxels[:, 1],
+                        current_voxels[:, 2]] = 1
+            seg=np.copy(seg2) 
+
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+            else:
+                value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+                value = value.sum().item()
+
+            magnetomTrio_dsc.append(value)
+            print(patient_num)
+
 
     data = []
     for dsc in verio_dsc:
@@ -204,11 +284,13 @@ def main(args):
         data.append({"Scanner": "Aera", "DSC": dsc})
     for dsc in ingenia_dsc:
         data.append({"Scanner": "Ingenia", "DSC": dsc})
+    for dsc in magnetomTrio_dsc:
+        data.append({"Scanner": "Magnetom Trio", "DSC": dsc})
     df = pd.DataFrame(data)
     
     ax = sns.boxplot(x="Scanner", y="DSC", data=df)
     ax = sns.swarmplot(x="Scanner", y="DSC", data=df, color=".25")
-    plt.savefig('scanner.png')
+    plt.savefig('scanner_all.png')
     plt.clf()
 
 
