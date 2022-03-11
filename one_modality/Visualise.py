@@ -140,12 +140,12 @@ def main(args):
         slice_num = 100
         gt_slice, fl_slice, t1_slice, fl_un_slice= np.rot90(gt[slice_num,:,:], 3), np.rot90(fl[slice_num,:,:], 3), np.rot90(t1[slice_num,:,:], 3), np.rot90(fl_un[slice_num,:,:], 3)
 
-        ax = sns.heatmap(fl_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False, alpha=0.5)
+        ax = sns.heatmap(fl_slice, cbar=False, cmap="Blues", xticklabels=False, yticklabels=False, alpha=0.5)
         ax.invert_yaxis()
         plt.savefig(args.path_save + str(patient_num) + 'flair.png')
         # plt.clf()
 
-        ax = sns.heatmap(t1_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False, alpha=0.5)
+        ax = sns.heatmap(t1_slice, cbar=False, cmap="Reds" xticklabels=False, yticklabels=False, alpha=0.5)
         ax.invert_yaxis()
         plt.savefig(args.path_save + str(patient_num) + 't1.png')
         plt.clf()
