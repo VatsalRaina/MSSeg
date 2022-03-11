@@ -150,6 +150,12 @@ def main(args):
     lesion_size_min = []
     lesion_size_max = []
 
+    model1_dsc_norm = []
+    model2_dsc_norm = []
+    model3_dsc_norm = []
+    # Reference precision when using normalised DSC
+    r = 0.001
+
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
             # print(count)
@@ -204,6 +210,21 @@ def main(args):
                 model1_dsc.append(value.sum().item())
 
             print(count, value, np.sum(seg), np.sum(gt))
+
+            # Calculate the normalised DSC score now
+
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+                model1_dsc_norm.append(value)
+            else:
+                k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+                tp = np.sum(seg[gt==1])
+                fp = np.sum(seg[gt==0])
+                fn = np.sum(gt[seg==0])
+                fp_scaled = k * fp
+                value = 2 * tp / (fp_scaled + 2 * tp + fn)
+                model1_dsc_norm.append(value)
 
             # all_outputs = []
             # for model in models2:
@@ -295,12 +316,23 @@ def main(args):
 
 
 
+    # sns.scatterplot(x=lesion_size_min, y=model1_dsc, label="Min")
+    # sns.scatterplot(x=lesion_size_mean, y=model1_dsc, label="Mean")
+    # sns.scatterplot(x=lesion_size_max, y=model1_dsc, label="Max")
+    # plt.xscale('log')
+    # plt.xlabel(r"Lesion Size ($mm^3$)")
+    # plt.ylabel("DSC")
+    # plt.ylim([-0.03, 1.0])
+    # plt.legend()
+    # plt.savefig('lesionSize.png', bbox_inches="tight")
+    # plt.clf()
+
     sns.scatterplot(x=lesion_size_min, y=model1_dsc, label="Min")
     sns.scatterplot(x=lesion_size_mean, y=model1_dsc, label="Mean")
     sns.scatterplot(x=lesion_size_max, y=model1_dsc, label="Max")
     plt.xscale('log')
     plt.xlabel(r"Lesion Size ($mm^3$)")
-    plt.ylabel("DSC")
+    plt.ylabel(r"$\overline{DSC}$")
     plt.ylim([-0.03, 1.0])
     plt.legend()
     plt.savefig('lesionSize.png', bbox_inches="tight")

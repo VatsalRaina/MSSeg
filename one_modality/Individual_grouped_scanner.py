@@ -133,6 +133,13 @@ def main(args):
     aera_dsc = []
     ingenia_dsc = []
 
+    verio_dsc_norm = []
+    discovery_dsc_norm = []
+    aera_dsc_norm = []
+    ingenia_dsc_norm = []
+
+    r = 0.001
+
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
             patient_num = count + 1
@@ -196,6 +203,29 @@ def main(args):
 
             print(patient_num)
 
+            # Calculate the normalised DSC score now
+
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+            else:
+                k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+                tp = np.sum(seg[gt==1])
+                fp = np.sum(seg[gt==0])
+                fn = np.sum(gt[seg==0])
+                fp_scaled = k * fp
+                value = 2 * tp / (fp_scaled + 2 * tp + fn)
+
+            if patient_num in verio_patients:
+                verio_dsc_norm.append(value)
+            if patient_num in discovery_patients:
+                discovery_dsc_norm.append(value)
+            if patient_num in aera_patients:
+                aera_dsc_norm.append(value)
+            if patient_num in ingenia_patients:
+                ingenia_dsc_norm.append(value)
+
+
     path_data = args.path_data2  # Path where the data is
     flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
@@ -218,6 +248,7 @@ def main(args):
     val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
 
     magnetomTrio_dsc = []
+    magnetomTrio_dsc_norm = []
 
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
@@ -274,22 +305,54 @@ def main(args):
             magnetomTrio_dsc.append(value)
             print(patient_num)
 
+            # Calculate the normalised DSC score now
+
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+            else:
+                k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+                tp = np.sum(seg[gt==1])
+                fp = np.sum(seg[gt==0])
+                fn = np.sum(gt[seg==0])
+                fp_scaled = k * fp
+                value = 2 * tp / (fp_scaled + 2 * tp + fn)
+
+            magnetomTrio_dsc_norm.append(value)
+
+    # data = []
+    # for dsc in verio_dsc:
+    #     data.append({"Scanner": "Verio", "DSC": dsc})
+    # for dsc in discovery_dsc:
+    #     data.append({"Scanner": "Discovery", "DSC": dsc})
+    # for dsc in aera_dsc:
+    #     data.append({"Scanner": "Aera", "DSC": dsc})
+    # for dsc in ingenia_dsc:
+    #     data.append({"Scanner": "Ingenia", "DSC": dsc})
+    # for dsc in magnetomTrio_dsc:
+    #     data.append({"Scanner": "Magnetom Trio", "DSC": dsc})
+    # df = pd.DataFrame(data)
+    
+    # ax = sns.boxplot(x="Scanner", y="DSC", data=df)
+    # ax = sns.swarmplot(x="Scanner", y="DSC", data=df, color=".25")
+    # plt.savefig('scanner_all.png')
+    # plt.clf()
 
     data = []
-    for dsc in verio_dsc:
-        data.append({"Scanner": "Verio", "DSC": dsc})
-    for dsc in discovery_dsc:
-        data.append({"Scanner": "Discovery", "DSC": dsc})
-    for dsc in aera_dsc:
-        data.append({"Scanner": "Aera", "DSC": dsc})
-    for dsc in ingenia_dsc:
-        data.append({"Scanner": "Ingenia", "DSC": dsc})
-    for dsc in magnetomTrio_dsc:
-        data.append({"Scanner": "Magnetom Trio", "DSC": dsc})
+    for dsc in verio_dsc_norm:
+        data.append({"Scanner": "Verio", r"$\overline{DSC}$": dsc})
+    for dsc in discovery_dsc_norm:
+        data.append({"Scanner": "Discovery", r"$\overline{DSC}$": dsc})
+    for dsc in aera_dsc_norm:
+        data.append({"Scanner": "Aera", r"$\overline{DSC}$": dsc})
+    for dsc in ingenia_dsc_norm:
+        data.append({"Scanner": "Ingenia", r"$\overline{DSC}$": dsc})
+    for dsc in magnetomTrio_dsc_norm:
+        data.append({"Scanner": "Magnetom Trio", r"$\overline{DSC}$": dsc})
     df = pd.DataFrame(data)
     
-    ax = sns.boxplot(x="Scanner", y="DSC", data=df)
-    ax = sns.swarmplot(x="Scanner", y="DSC", data=df, color=".25")
+    ax = sns.boxplot(x="Scanner", y=r"$\overline{DSC}$", data=df)
+    ax = sns.swarmplot(x="Scanner", y=r"$\overline{DSC}$", data=df, color=".25")
     plt.savefig('scanner_all.png')
     plt.clf()
 
