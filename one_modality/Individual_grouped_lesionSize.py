@@ -327,9 +327,9 @@ def main(args):
     # plt.savefig('lesionSize.png', bbox_inches="tight")
     # plt.clf()
 
-    sns.scatterplot(x=lesion_size_min, y=model1_dsc, label="Min")
-    sns.scatterplot(x=lesion_size_mean, y=model1_dsc, label="Mean")
-    sns.scatterplot(x=lesion_size_max, y=model1_dsc, label="Max")
+    sns.scatterplot(x=lesion_size_min, y=model1_dsc_norm, label="Min")
+    sns.scatterplot(x=lesion_size_mean, y=model1_dsc_norm, label="Mean")
+    sns.scatterplot(x=lesion_size_max, y=model1_dsc_norm, label="Max")
     plt.xscale('log')
     plt.xlabel(r"Lesion Size ($mm^3$)")
     plt.ylabel(r"$\overline{DSC}$")
