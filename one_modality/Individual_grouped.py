@@ -148,6 +148,12 @@ def main(args):
     model3_dsc = []
     lesion_loads = []
 
+    model1_dsc_norm = []
+    model2_dsc_norm = []
+    model3_dsc_norm = []
+    # Reference precision when using normalised DSC
+    r = 0.001
+
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
             # print(count)
@@ -203,6 +209,22 @@ def main(args):
 
             print(count, value, np.sum(seg), np.sum(gt))
 
+            # Calculate the normalised DSC score now
+
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+                model1_dsc_norm.append(value)
+            else:
+                k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+                tp = np.sum(seg[gt==1])
+                fp = np.sum(seg[gt==0])
+                fn = np.sum(gt[seg==0])
+                fp_scaled = k * fp
+                value = 2 * tp / (fp_scaled + 2 * tp + fn)
+                model1_dsc_norm.append(value)
+
+
             all_outputs = []
             for model in models2:
                 outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
@@ -239,6 +261,21 @@ def main(args):
             else:
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                 model2_dsc.append(value.sum().item())
+
+            # Calculate the normalised DSC score now
+
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+                model2_dsc_norm.append(value)
+            else:
+                k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+                tp = np.sum(seg[gt==1])
+                fp = np.sum(seg[gt==0])
+                fn = np.sum(gt[seg==0])
+                fp_scaled = k * fp
+                value = 2 * tp / (fp_scaled + 2 * tp + fn)
+                model2_dsc_norm.append(value)
 
 
             all_outputs = []
@@ -278,22 +315,46 @@ def main(args):
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                 model3_dsc.append(value.sum().item())
 
+            # Calculate the normalised DSC score now
+
+            im_sum = np.sum(seg) + np.sum(gt)
+            if im_sum == 0:
+                value = 1.0
+                model3_dsc_norm.append(value)
+            else:
+                k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+                tp = np.sum(seg[gt==1])
+                fp = np.sum(seg[gt==0])
+                fn = np.sum(gt[seg==0])
+                fp_scaled = k * fp
+                value = 2 * tp / (fp_scaled + 2 * tp + fn)
+                model3_dsc_norm.append(value)
+
 
             lesion_load = (np.sum(gt) / len(gt.flatten()) ) * 100
             lesion_loads.append(lesion_load)
 
 
 
+    # sns.scatterplot(x=lesion_loads, y=model1_dsc, label="MSSEG-1")
+    # sns.scatterplot(x=lesion_loads, y=model2_dsc, label="PubMRI")
+    # sns.scatterplot(x=lesion_loads, y=model3_dsc, label="MSSEG-1 & PubMRI")
+    # plt.xlabel("Lesion load (%)")
+    # plt.ylabel("DSC")
+    # plt.ylim([-0.03, 1.0])
+    # plt.legend()
+    # plt.savefig('lesion.png')
+    # plt.clf()
+
     sns.scatterplot(x=lesion_loads, y=model1_dsc, label="MSSEG-1")
     sns.scatterplot(x=lesion_loads, y=model2_dsc, label="PubMRI")
     sns.scatterplot(x=lesion_loads, y=model3_dsc, label="MSSEG-1 & PubMRI")
     plt.xlabel("Lesion load (%)")
-    plt.ylabel("DSC")
+    plt.ylabel("r$\overline{\text{DSC}}$")
     plt.ylim([-0.03, 1.0])
     plt.legend()
     plt.savefig('lesion.png')
     plt.clf()
-
 
 #%%
 if __name__ == "__main__":
