@@ -5,6 +5,7 @@ at the selected threshold.
 
 import argparse
 import os
+from struct import pack
 import torch
 import sys
 import re
@@ -199,6 +200,8 @@ def main(args):
 
     for p, r in zip(all_precisions, all_recalls):
         plt.plot(r, p)
+    ax = plt.gca()
+    ax.set_yscale('log')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.savefig('pr.png')
