@@ -145,7 +145,7 @@ def main(args):
         plt.savefig(args.path_save + str(patient_num) + 'flair.png')
         # plt.clf()
 
-        ax = sns.heatmap(t1_slice, cbar=False, cmap="Reds" xticklabels=False, yticklabels=False, alpha=0.5)
+        ax = sns.heatmap(t1_slice, cbar=False, cmap="Reds", xticklabels=False, yticklabels=False, alpha=0.5)
         ax.invert_yaxis()
         plt.savefig(args.path_save + str(patient_num) + 't1.png')
         plt.clf()
