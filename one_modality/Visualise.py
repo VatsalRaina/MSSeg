@@ -131,6 +131,7 @@ def main(args):
             all_flair.append(inputs.cpu().numpy()[0][0])
             all_t1.append(inputs.cpu().numpy()[0][1])
             all_flair_un.append(inputs.cpu().numpy()[0][2])
+            break
 
     patient_nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     for patient_num in patient_nums:        
@@ -139,25 +140,27 @@ def main(args):
         slice_num = 100
         gt_slice, fl_slice, t1_slice, fl_un_slice= np.rot90(gt[slice_num,:,:], 3), np.rot90(fl[slice_num,:,:], 3), np.rot90(t1[slice_num,:,:], 3), np.rot90(fl_un[slice_num,:,:], 3)
 
-        ax = sns.heatmap(fl_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+        ax = sns.heatmap(fl_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False, alpha=0.5)
         ax.invert_yaxis()
         plt.savefig(args.path_save + str(patient_num) + 'flair.png')
-        plt.clf()
+        # plt.clf()
 
-        ax = sns.heatmap(t1_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+        ax = sns.heatmap(t1_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False, alpha=0.5)
         ax.invert_yaxis()
         plt.savefig(args.path_save + str(patient_num) + 't1.png')
         plt.clf()
 
-        ax = sns.heatmap(fl_un_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
-        ax.invert_yaxis()
-        plt.savefig(args.path_save + str(patient_num) + 'flair_un.png')
-        plt.clf()
+        # ax = sns.heatmap(fl_un_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+        # ax.invert_yaxis()
+        # plt.savefig(args.path_save + str(patient_num) + 'flair_un.png')
+        # plt.clf()
 
-        ax = sns.heatmap(gt_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
-        ax.invert_yaxis()
-        plt.savefig(args.path_save + str(patient_num) + 'gt.png')
-        plt.clf()
+        # ax = sns.heatmap(gt_slice, cbar=False, cmap=cm.gray, xticklabels=False, yticklabels=False)
+        # ax.invert_yaxis()
+        # plt.savefig(args.path_save + str(patient_num) + 'gt.png')
+        # plt.clf()
+
+        break
 
 #%%
 if __name__ == "__main__":
