@@ -186,8 +186,10 @@ def main(args):
 
                 dsc = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                 dsc_sum += dsc.sum().item()
-
-                k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+                if np.sum(gt) == 0:
+                    k = 1.0
+                else:
+                    k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
                 tp = np.sum(seg[gt==1])
                 fp = np.sum(seg[gt==0])
                 fn = np.sum(gt[seg==0])
