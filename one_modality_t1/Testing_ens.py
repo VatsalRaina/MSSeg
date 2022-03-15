@@ -123,14 +123,13 @@ def main(args):
     print('Running the inference, please wait... ')
     
     th = args.threshold
-
-    
-    # all_predictions = []
-    # all_groundTruths = []
-    # all_uncs = []
+    r = 0.001
 
     with torch.no_grad():
-        metric_sum = 0.0
+        dsc_sum = 0.0
+        dsc_norm_sum = 0.0
+        fpr_sum = 0.0
+        fnr_sum = 0.0
         metric_count = 0
         for count, batch_data in enumerate(val_loader):
             inputs, gt  = (
@@ -148,9 +147,6 @@ def main(args):
                 all_outputs.append(outputs)
             all_outputs = np.asarray(all_outputs)
             outputs = np.mean(all_outputs, axis=0)
-
-            # Get all 
-            # uncs = -1 * (outputs * np.log(outputs) + (1. - outputs) * np.log(1. - outputs))
             
             outputs[outputs>th]=1
             outputs[outputs<th]=0
@@ -177,52 +173,44 @@ def main(args):
                         current_voxels[:, 2]] = 1
             seg=np.copy(seg2) 
 
-            # all_predictions.append(seg)
-            # all_groundTruths.append(gt)
-            # all_uncs.append(uncs)
-
             im_sum = np.sum(seg) + np.sum(gt)
             if im_sum == 0:
                 value = 1.0
-                metric_sum += value
+                dsc_sum += value
+                dsc_norm_sum += value
+                fpr_sum += value
+                fnr_sum += value
+
             else:
-                value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-                metric_sum += value.sum().item()
+
+                dsc = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+                dsc_sum += dsc.sum().item()
+                if np.sum(gt) == 0:
+                    k = 1.0
+                else:
+                    k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+                tp = np.sum(seg[gt==1])
+                fp = np.sum(seg[gt==0])
+                fn = np.sum(gt[seg==0])
+                fp_scaled = k * fp
+                dsc_norm = 2 * tp / (fp_scaled + 2 * tp + fn)
+                dsc_norm_sum += dsc_norm
+
+                fpr_sum += fp / len(gt.flatten())
+                fnr_sum += fn / len(gt.flatten())
+
             metric_count += 1
-
-            # # Save as predictions as nii file here in original space
-
-            # meta_data = batch_data['image_meta_dict']
-            # for i, data in enumerate(outputs_o):  
-            #     out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
-
-            # original_affine = out_meta.get("original_affine", None) if out_meta else None
-            # affine = out_meta.get("affine", None) if out_meta else None
-            # spatial_shape = out_meta.get("spatial_shape", None) if out_meta else None
-              
-            # data2=np.copy(seg)
-            # name = args.path_save+str(count+1)+".nii.gz"
-            # write_nifti(data2,name,affine=affine,target_affine=original_affine,
-            #             output_spatial_shape=spatial_shape)     
-
-        metric = metric_sum / metric_count
-        print("Dice score:", metric)
+  
+        dsc = dsc_sum / metric_count
+        print("DSC:", dsc)
+        dsc_norm = dsc_norm_sum / metric_count
+        print("DSC norm:", dsc_norm)
+        fpr = fpr_sum / metric_count
+        print("FPR:", fpr)
+        fnr = fnr_sum / metric_count
+        print("FNR:", fnr)
             
-    # # Plot the first ground truth and corresponding prediction at a random slice
-    # gt, pred, unc = all_groundTruths[0], all_predictions[0], all_uncs[0]
-    # gt_slice, pred_slice, unc_slice = gt[100,:,:], pred[100,:,:], unc[100,:,:]
 
-    # sns.heatmap(gt_slice)
-    # plt.savefig('gt.png')
-    # plt.clf()
-
-    # sns.heatmap(pred_slice)
-    # plt.savefig('pred.png')
-    # plt.clf()
-
-    # sns.heatmap(unc_slice)
-    # plt.savefig('unc.png')
-    # plt.clf()
 
 #%%
 if __name__ == "__main__":
