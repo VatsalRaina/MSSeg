@@ -116,9 +116,13 @@ def main(args):
     print('Running the inference, please wait... ')
     
     th = args.threshold
+    r = 0.001
 
     model.eval()
-    metric_sum = 0.0
+    dsc_sum = 0.0
+    dsc_norm_sum = 0.0
+    fpr_sum = 0.0
+    fnr_sum = 0.0
     metric_count = 0
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
@@ -161,10 +165,29 @@ def main(args):
             im_sum = np.sum(seg) + np.sum(gt)
             if im_sum == 0:
                 value = 1.0
-                metric_sum += value
+                dsc_sum += value
+                dsc_norm_sum += value
+                fpr_sum += value
+                fnr_sum += value
+
             else:
-                value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-                metric_sum += value.sum().item()
+
+                dsc = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
+                dsc_sum += dsc.sum().item()
+                if np.sum(gt) == 0:
+                    k = 1.0
+                else:
+                    k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+                tp = np.sum(seg[gt==1])
+                fp = np.sum(seg[gt==0])
+                fn = np.sum(gt[seg==0])
+                fp_scaled = k * fp
+                dsc_norm = 2 * tp / (fp_scaled + 2 * tp + fn)
+                dsc_norm_sum += dsc_norm
+
+                fpr_sum += fp / len(gt.flatten())
+                fnr_sum += fn / len(gt.flatten())
+
             metric_count += 1
 
             # # Save as predictions as nii file here in original space
@@ -182,8 +205,14 @@ def main(args):
             # write_nifti(data2,name,affine=affine,target_affine=original_affine,
             #             output_spatial_shape=spatial_shape)        
 
-        metric = metric_sum / metric_count
-        print("Dice score:", metric)
+        dsc = dsc_sum / metric_count
+        print("DSC:", dsc)
+        dsc_norm = dsc_norm_sum / metric_count
+        print("DSC norm:", dsc_norm)
+        fpr = fpr_sum / metric_count
+        print("FPR:", fpr)
+        fnr = fnr_sum / metric_count
+        print("FNR:", fnr)
             
             
 
