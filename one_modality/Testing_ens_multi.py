@@ -197,8 +197,8 @@ def main(args):
                 dsc_norm = 2 * tp / (fp_scaled + 2 * tp + fn)
                 dsc_norm_sum += dsc_norm
 
-                fpr_sum += fp / len(gt.flatten())
-                fnr_sum += fn / len(gt.flatten())
+                fpr_sum += fp / ( len(gt.flatten()) - np.sum(gt) )
+                fnr_sum += fn / np.sum(gt)
 
             metric_count += 1
 
