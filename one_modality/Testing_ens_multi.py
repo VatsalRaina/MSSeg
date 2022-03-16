@@ -198,7 +198,10 @@ def main(args):
                 dsc_norm_sum += dsc_norm
 
                 fpr_sum += fp / ( len(gt.flatten()) - np.sum(gt) )
-                fnr_sum += fn / np.sum(gt)
+                if np.sum(gt) == 0:
+                    fnr_sum += 1.0
+                else:
+                    fnr_sum += fn / np.sum(gt)
 
             metric_count += 1
 
