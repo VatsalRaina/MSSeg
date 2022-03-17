@@ -102,7 +102,7 @@ def dice_norm_metric(ground_truth, predictions):
         fp_scaled = k * fp
         dsc_norm = 2 * tp / (fp_scaled + 2 * tp + fn)
 
-        fpr += fp / ( len(gt.flatten()) - np.sum(gt) )
+        fpr = fp / ( len(gt.flatten()) - np.sum(gt) )
         if np.sum(gt) == 0:
             fnr = 1.0
         else:
