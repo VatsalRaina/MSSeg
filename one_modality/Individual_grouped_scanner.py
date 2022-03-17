@@ -684,7 +684,7 @@ def main(args):
     df = pd.DataFrame(data)
     
     ax = sns.boxplot(x="Scanner", y=r"$\overline{DSC}$", hue="Model", data=df)
-    ax = sns.swarmplot(x="Scanner", y=r"$\overline{DSC}$", hue="Model", data=df, color=".25")
+    #ax = sns.swarmplot(x="Scanner", y=r"$\overline{DSC}$", hue="Model", data=df, color=".25")
     plt.savefig('scanner_all.png')
     plt.clf()
 
