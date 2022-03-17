@@ -494,7 +494,7 @@ def main(args):
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                 value = value.sum().item()
 
-            magnetomTrio_dsc.append(value)
+            magnetomTrio_dsc_1.append(value)
             print(patient_num)
 
             # Calculate the normalised DSC score now
