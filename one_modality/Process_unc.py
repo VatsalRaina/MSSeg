@@ -78,6 +78,37 @@ def dice_metric(ground_truth, predictions):
 
     return dice
 
+def dice_norm_metric(ground_truth, predictions):
+    """
+    For a single example returns DSC_norm, fpr, fnr
+    """
+
+    # Reference for normalized DSC
+    r = 0.001
+    # Cast to float32 type
+    gt = ground_truth.astype("float32")
+    seg = predictions.astype("float32")
+    im_sum = np.sum(seg) + np.sum(gt)
+    if im_sum == 0:
+        return 1.0, 1.0, 1.0
+    else:
+        if np.sum(gt) == 0:
+            k = 1.0
+        else:
+            k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
+        tp = np.sum(seg[gt==1])
+        fp = np.sum(seg[gt==0])
+        fn = np.sum(gt[seg==0])
+        fp_scaled = k * fp
+        dsc_norm = 2 * tp / (fp_scaled + 2 * tp + fn)
+
+        fpr += fp / ( len(gt.flatten()) - np.sum(gt) )
+        if np.sum(gt) == 0:
+            fnr = 1.0
+        else:
+            fnr = fn / np.sum(gt)
+        return dsc_norm, fpr, fnr
+
 
 def get_unc_score(gts, preds, uncs, plot=True):
     ordering = uncs.argsort()
@@ -92,6 +123,9 @@ def get_unc_score(gts, preds, uncs, plot=True):
     fracs_retained = np.log(np.arange(num_values+1)[1:])
     fracs_retained = fracs_retained / np.amax(fracs_retained)
     dsc_scores = []
+    dsc_norm_scores = []
+    fpr_scores = []
+    fnr_scores = []
     for frac in fracs_retained:
         pos = int(N * frac)
         if pos == N:
@@ -99,7 +133,14 @@ def get_unc_score(gts, preds, uncs, plot=True):
         else:
             curr_preds = np.concatenate((preds[:pos], gts[pos:]))
         dsc_scores.append(dice_metric(gts, curr_preds))
+        dsc_norm, fpr, fnr = dice_norm_metric(gts, curr_preds)
+        dsc_norm_scores.append(dsc_norm)
+        fpr_scores.append(fpr)
+        fnr_scores.append(fnr)
     dsc_scores = np.asarray(dsc_scores)
+    dsc_norm_scores = np.asarray(dsc_norm_scores)
+    fpr_scores = np.asarray(fpr_scores)
+    fnr_scores = np.asarray(fnr_scores)
 
     if plot:
 
@@ -148,7 +189,7 @@ def get_unc_score(gts, preds, uncs, plot=True):
         plt.savefig('unc_ret.png')
         plt.clf()
 
-    return metrics.auc(fracs_retained, dsc_scores)
+    return metrics.auc(fracs_retained, dsc_scores), metrics.auc(fracs_retained, dsc_norm_scores), metrics.auc(fracs_retained, fpr_scores), metrics.auc(fracs_retained, fnr_scores)
     
 
 def main(args):
@@ -228,16 +269,47 @@ def main(args):
     
     th = args.threshold
 
-    all_vals = {
-        "confidence": 0.0,
-        "entropy_of_expected": 0.0,
-        "expected_entropy": 0.0,
-        "mutual_information": 0.0,
-        "epkl": 0.0,
-        "reverse_mutual_information": 0.0,
-        "ideal": 0.0,
-        "random": 0.0
+    all_vals_dsc = {
+        # "confidence": 0.0,
+        # "entropy_of_expected": 0.0,
+        # "expected_entropy": 0.0,
+        # "mutual_information": 0.0,
+        # "epkl": 0.0,
+        "reverse_mutual_information": 0.0
+        # "ideal": 0.0,
+        # "random": 0.0
         }
+    all_vals_dsc_norm = {
+        # "confidence": 0.0,
+        # "entropy_of_expected": 0.0,
+        # "expected_entropy": 0.0,
+        # "mutual_information": 0.0,
+        # "epkl": 0.0,
+        "reverse_mutual_information": 0.0
+        # "ideal": 0.0,
+        # "random": 0.0
+        }
+    all_vals_fpr = {
+        # "confidence": 0.0,
+        # "entropy_of_expected": 0.0,
+        # "expected_entropy": 0.0,
+        # "mutual_information": 0.0,
+        # "epkl": 0.0,
+        "reverse_mutual_information": 0.0
+        # "ideal": 0.0,
+        # "random": 0.0
+        }
+    all_vals_fnr = {
+        # "confidence": 0.0,
+        # "entropy_of_expected": 0.0,
+        # "expected_entropy": 0.0,
+        # "mutual_information": 0.0,
+        # "epkl": 0.0,
+        "reverse_mutual_information": 0.0
+        # "ideal": 0.0,
+        # "random": 0.0
+        }
+
     num_patients = 0
 
     with torch.no_grad():
@@ -293,22 +365,27 @@ def main(args):
 
             # Calculate all AUC-DSCs
             for unc_key, curr_uncs in uncs.items():
-                auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), plot=False)
-                print(unc_key, auc_dsc)
-                all_vals[unc_key] += 1. - auc_dsc
+                if unc_key != "reverse_mutual_information":
+                    continue
+                auc_dsc, auc_dsc_norm, auc_fpr, auc_fnr = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), plot=False)
+                print(unc_key, auc_dsc_norm)
+                all_vals_dsc[unc_key] += 1. - auc_dsc
+                all_vals_dsc_norm[unc_key] += 1. - auc_dsc_norm
+                all_vals_fpr[unc_key] += 1. - auc_fpr
+                all_vals_fnr[unc_key] += 1. - auc_fnr
 
-            # Get ideal values
-            auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()), plot=False)
-            print("Ideal", auc_dsc)
-            all_vals["ideal"] += 1. - auc_dsc
+            # # Get ideal values
+            # auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()), plot=False)
+            # print("Ideal", auc_dsc)
+            # all_vals["ideal"] += 1. - auc_dsc
 
-            # Get random values
-            rand_uncs = np.linspace(0, 1000, len(gt.flatten()))
-            np.random.seed(0)
-            np.random.shuffle(rand_uncs)
-            auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs, plot=False)
-            print("Random", auc_dsc)
-            all_vals["random"] += 1. - auc_dsc
+            # # Get random values
+            # rand_uncs = np.linspace(0, 1000, len(gt.flatten()))
+            # np.random.seed(0)
+            # np.random.shuffle(rand_uncs)
+            # auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), rand_uncs, plot=False)
+            # print("Random", auc_dsc)
+            # all_vals["random"] += 1. - auc_dsc
 
 
             im_sum = np.sum(seg) + np.sum(gt)
@@ -322,25 +399,14 @@ def main(args):
 
     print("Mean across all patients:")
     
-    for unc_key, sum_aacdsc in all_vals.items():
-        print(unc_key, sum_aacdsc/num_patients)
-
-
-    # # Plot the first ground truth and corresponding prediction at a random slice
-    # gt, pred, unc = all_groundTruths[0], all_predictions[0], all_uncs[0]
-    # gt_slice, pred_slice, unc_slice = gt[100,:,:], pred[100,:,:], unc[100,:,:]
-
-    # sns.heatmap(gt_slice)
-    # plt.savefig('gt.png')
-    # plt.clf()
-
-    # sns.heatmap(pred_slice)
-    # plt.savefig('pred.png')
-    # plt.clf()
-
-    # sns.heatmap(unc_slice)
-    # plt.savefig('unc.png')
-    # plt.clf()
+    for unc_key, sum_aac in all_vals_dsc.items():
+        print(unc_key, sum_aac/num_patients)
+    for unc_key, sum_aac in all_vals_dsc_norm.items():
+        print(unc_key, sum_aac/num_patients)
+    for unc_key, sum_aac in all_vals_fpr.items():
+        print(unc_key, sum_aac/num_patients)
+    for unc_key, sum_aac in all_vals_fnr.items():
+        print(unc_key, sum_aac/num_patients)
 
 #%%
 if __name__ == "__main__":
