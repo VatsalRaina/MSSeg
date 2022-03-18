@@ -104,18 +104,6 @@ def main(args):
 
 
     act = Activations(softmax=True)
-    
-    for i, model in enumerate(models1):
-        model.load_state_dict(torch.load(args.path_model1 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
-        model.eval()
-
-    for i, model in enumerate(models2):
-        model.load_state_dict(torch.load(args.path_model2 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
-        model.eval()
-
-    for i, model in enumerate(models3):
-        model.load_state_dict(torch.load(args.path_model3 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
-        model.eval()
 
     print()
     print('Running the inference, please wait... ')
