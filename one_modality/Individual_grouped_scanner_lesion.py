@@ -188,13 +188,13 @@ def main(args):
 
     for l in verio_load:
         data.append({"Scanner": "Verio", "Lesion load": l})
-    for dsc in discovery_load:
+    for l in discovery_load:
         data.append({"Scanner": "Discovery", "Lesion load": l})
-    for dsc in aera_load:
+    for l in aera_load:
         data.append({"Scanner": "Aera", "Lesion load": l})
-    for dsc in ingenia_load:
+    for l in ingenia_load:
         data.append({"Scanner": "Ingenia", "Lesion load": l})
-    for dsc in magnetomTrio_load:
+    for l in magnetomTrio_load:
         data.append({"Scanner": "Magnetom", "Lesion load": l})
 
 
@@ -202,7 +202,7 @@ def main(args):
     
     ax = sns.boxplot(x="Scanner", y=r"Lesion load", data=df)
     #ax = sns.swarmplot(x="Scanner", y=r"$\overline{DSC}$", hue="Model", data=df, color=".25")
-    plt.savefig('scanner_load.png')
+    plt.savefig('scanner_load.png', bbox_inches="tight")
     plt.clf()
 
 
