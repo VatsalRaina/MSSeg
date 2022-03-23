@@ -162,10 +162,10 @@ def main(args):
         dsc_norm_sum = 0.0
         metric_count = 0
         for outputs, gt in zip(all_patient_outputs, all_gts):
-
-            outputs[outputs>th]=1
-            outputs[outputs<th]=0
-            seg= np.squeeze(outputs)
+            curr_outputs = outputs.copy()
+            curr_outputs[outputs>th]=1
+            curr_outputs[outputs<th]=0
+            seg= np.squeeze(curr_outputs)
 
             """
             Remove connected components smaller than 10 voxels
