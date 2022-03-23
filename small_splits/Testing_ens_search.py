@@ -120,7 +120,7 @@ def main(args):
     print()
     print('Running the inference, please wait... ')
 
-    all_outputs = []
+    all_patient_outputs = []
     all_gts = []
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
@@ -144,7 +144,7 @@ def main(args):
             val_labels = gt.cpu().numpy()
             gt = np.squeeze(val_labels)
 
-            all_outputs.append(outputs)
+            all_patient_outputs.append(outputs)
             all_gts.append(gt)
             
 
@@ -159,7 +159,7 @@ def main(args):
     for th in thresholds:
 
         dsc_norm_sum = 0.0
-        for outputs, gt in zip(all_outputs, all_gts):
+        for outputs, gt in zip(all_patient_outputs, all_gts):
 
             outputs[outputs>th]=1
             outputs[outputs<th]=0
