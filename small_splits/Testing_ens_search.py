@@ -154,8 +154,8 @@ def main(args):
     best_dsc_norm = 0.0
     best_th = 0.0
 
-    # thresholds = np.linspace(0,1,100)
-    thresholds = [0.3, 0.4, 0.5]
+    thresholds = np.linspace(0.0,1.0,100)
+    # thresholds = [0.3, 0.4, 0.5]
 
     for th in thresholds:
 
