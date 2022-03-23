@@ -159,6 +159,7 @@ def main(args):
     for th in thresholds:
 
         dsc_norm_sum = 0.0
+        metric_count = 0
         for outputs, gt in zip(all_patient_outputs, all_gts):
 
             outputs[outputs>th]=1
