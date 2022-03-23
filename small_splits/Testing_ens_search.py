@@ -154,11 +154,11 @@ def main(args):
     best_dsc_norm = 0.0
     best_th = 0.0
 
-    thresholds = np.linspace(0.0,1.0,100)
-    # thresholds = [0.3, 0.4, 0.5]
+    # thresholds = np.linspace(0.0,1.0,100, endpoint=False)
+    thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
     for th in thresholds:
-
+        print("Threshold", th)
         dsc_norm_sum = 0.0
         metric_count = 0
         for outputs, gt in zip(all_patient_outputs, all_gts):
