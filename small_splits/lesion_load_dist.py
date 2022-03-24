@@ -125,20 +125,20 @@ def main(args):
             load = np.sum(gt) / len(gt.flatten())
             test_load.append(load)
 
+    data = []
 
- 
-    sns.scatterplot(x=lesion_size_min, y=model1_dsc_norm, label="Min")
-    sns.scatterplot(x=lesion_size_mean, y=model1_dsc_norm, label="Mean")
-    sns.scatterplot(x=lesion_size_max, y=model1_dsc_norm, label="Max")
-    plt.xscale('log')
-    plt.xlabel(r"Lesion Size ($mm^3$)")
-    plt.ylabel(r"$\overline{DSC}$")
-    plt.ylim([-0.03, 1.0])
-    plt.legend()
-    plt.savefig('lesionSize.png', bbox_inches="tight")
+    for load in train_load:
+        data.append({"Lesion Load": load, "Split": "Train"})
+    for load in dev_load:
+        data.append({"Lesion Load": load, "Split": "Dev"})
+    for load in test_load:
+        data.append({"Lesion Load": load, "Split": "Test"})
+
+    df = pd.DataFrame(data)
+
+    sns.histplot(data=df, x="Lesion Load", hue="Split")
+    plt.savefig('splitLoad.png', bbox_inches="tight")
     plt.clf()
-
-
 #%%
 if __name__ == "__main__":
     args = parser.parse_args()
