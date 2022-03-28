@@ -17,8 +17,8 @@ parser.add_argument('--save_file', type=str, help='Where to save output file of 
 
 def main(args):
     
-    fi = ants.image_read(args.input_flair_proc)
-    mi = ants.image_read(args.input_flair_raw)
+    fi = ants.image_read(args.input_flair_raw)
+    mi = ants.image_read(args.input_flair_proc)
     orientation = nib.load(args.input_flair_raw).affine #Save the raw FLAIR orientation
     mytx = ants.registration(fixed=fi, moving=mi, type_of_transform = 'Rigid' ) #RIGID registration of processed FLAIR onto raw
 
