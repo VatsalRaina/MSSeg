@@ -116,7 +116,7 @@ def main(args):
     act = Activations(softmax=True)
     
     for i, model in enumerate(models):
-        model.load_state_dict(torch.load(root_dir + "seed" + str(i+1) + "/Best_model_finetuning.pth", map_location=torch.device()))
+        model.load_state_dict(torch.load(root_dir + "seed" + str(i+1) + "/Best_model_finetuning.pth", map_location=torch.device('cpu')))
         model.eval()
 
     print()
