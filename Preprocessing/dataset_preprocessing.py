@@ -5,15 +5,45 @@ Created on Tue Mar 29 16:13:46 2022
 
 @author: nataliia
 
-Input: FLAIR and T1, output FLAIR and T1
-Steps:
-1. denoise both flair and T1
-2. register T1 to FLAIR
-3. hd-bet T1
-4. brain_mask FLAIR
-5. n4_bis to flair and T1
+Implementation of a preprocessing pipeline described below:
+    Input: FLAIR and T1
+    Steps:
+    1. denoise both flair and T1
+    2. register T1 to FLAIR
+    3. hd-bet T1
+    4. brain_mask FLAIR
+    5. n4_bis to flair and T1
 
-Saves T1 and Flair to output folders
+    Saves flair to output folders
+
+Usage:
+    python dataset_preprocessing.py \
+    --flair_dir /home/meri/data/msseg_advanced/FLAIR \
+    --t1_dir /home/meri/data/msseg_advanced/MPRAGE_T1 \
+    --flair_final_dir /home/meri/data/msseg_advanced/FLAIR_preproc \
+    --flair_prefix FLAIR.nii.gz \
+    --t1_prefix acq-MPRAGE_T1w.nii.gz \
+    --root_dir /home/meri/data/msseg_advanced/ \
+    --save_tmp
+    
+python dataset_preprocessing.py \
+--flair_dir /home/meri/data/msseg_advanced/FLAIR \
+--t1_dir /home/meri/data/msseg_advanced/MPRAGE_T1 \
+--flair_final_dir /home/meri/data/msseg_advanced/FLAIR_preproc \
+--flair_prefix FLAIR.nii.gz \
+--t1_prefix acq-MPRAGE_T1w.nii.gz \
+--root_dir /home/meri/data/msseg_advanced/ \
+--save_tmp
+    
+    
+--flair_dir [str] path to dir with all FLAIR
+--t1_dir [str] similar to T1
+--flair_final_dir [str] directory where processed flair images will be saved
+--flair_prefix [str] name ending shared across flair files
+--t1_prefix [str] name ending shared across t1 files
+--root_dir [str] Parent directory for FLAIR and T1. All temporary directories will be created in it
+--save_tmp [flag] if sent wont remove tmp dirs
+    
 """
 import shutil
 from dipy.denoise.nlmeans import nlmeans
@@ -21,21 +51,21 @@ from dipy.io.image import load_nifti, save_nifti
 import argparse
 import subprocess
 import nibabel as nib
-import numpy as np
 import ants
 import SimpleITK as sitk
-import sys
 import os
 import pathlib
-from joblib import Parallel, delayed
+
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--flair_dir', type=str, help='Directory with FLAIR images')
-parser.add_argument('--flair_final_dir', type=str, default='FLAIR_processed', help='Directory to store processed FLAIR images')
+parser.add_argument('--flair_final_dir', type=str, default='FLAIR_processed', 
+                    help='Directory to store processed FLAIR images')
 parser.add_argument('--t1_dir', type=str, help='Directory with T1 images')
 parser.add_argument('--flair_prefix', type=str, help='name ending FLAIR')
 parser.add_argument('--t1_prefix', type=str, help='name ending T1')
-parser.add_argument('--root_dir', type=str, help='Parent directory for FLAIR and T1. All temporary directories will be created in it')
+parser.add_argument('--root_dir', type=str, 
+                    help='Parent directory for FLAIR and T1. All temporary directories will be created in it')
 parser.add_argument('--save_tmp', action='store_true',
                             help='if sent, does not delete temporary directories')
 
@@ -115,11 +145,14 @@ def preprocessing_pipeline(arg, opt):
                        t1_filename=t1_d_filepath, t1_output_filename=t1_dr_filepath)
 
     # skull striping
-    t1_hdbet_filepath = os.path.join(root_dir, "registered_t1", os.path.basename(t1_dr_filepath))
-    brainmask_filepath = os.path.join(root_dir, "registered_t1",
+    t1_hdbet_filepath = os.path.join(root_dir, "hdbet_out", os.path.basename(t1_dr_filepath))
+    brainmask_filepath = os.path.join(root_dir, "hdbet_out",
                                       get_brainmask_name(os.path.basename(t1_dr_filepath)))
     res = subprocess.call(
-        ['hd-bet', '-i', t1_dr_filepath, '-o', t1_hdbet_filepath],
+        [
+                'hd-bet', '-i', t1_dr_filepath, '-o', t1_hdbet_filepath #, 
+#                '-device', 'cpu', '-mode', 'fast', '-tta', '0'
+         ],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
 
@@ -184,11 +217,20 @@ def remove_directories(opt):
 
 
 if __name__ == '__main__':
+    print("parsing arguments")
     OPT = parser.parse_args()
+    print("parsing dataset")
     ARGS = parse_arguments(OPT)
-    TEMP_DIRNAMES = ['denoised_flair', 'denoised_t1', 'registered_t1', 'masked_flair']
+    TEMP_DIRNAMES = ['denoised_flair', 'denoised_t1', 'registered_t1', 
+                     'masked_flair', 'hdbet_out']
+    print("creating folders")
     create_directories(OPT)
+    print("starting processing")
+    i_count = 0
     for arg in ARGS:
         preprocessing_pipeline(arg=arg, opt=OPT)
+        if i_count % 10: print(f"processed {i_count} images")
+        i_count += 1
     if not OPT.save_tmp:
+        print("removing temporary dirs")
         remove_directories(OPT)
