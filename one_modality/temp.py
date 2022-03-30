@@ -40,11 +40,12 @@ parser.add_argument('--path_save', type=str, default='', help='Specify the path 
 
 # Set device
 def get_default_device():
-    if torch.cuda.is_available():
-        print("Got CUDA!")
-        return torch.device('cuda')
-    else:
-        return torch.device('cpu')
+    return torch.device('cpu')
+    # if torch.cuda.is_available():
+    #     print("Got CUDA!")
+    #     return torch.device('cuda')
+    # else:
+    #     return torch.device('cpu')
 
 
 def main(args):
