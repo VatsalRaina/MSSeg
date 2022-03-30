@@ -132,6 +132,7 @@ def main(args):
         fnr_sum = 0.0
         metric_count = 0
         for count, batch_data in enumerate(val_loader):
+            print(count)
             inputs, gt  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
                      batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
