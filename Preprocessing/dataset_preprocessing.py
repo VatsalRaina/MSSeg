@@ -15,58 +15,60 @@ Steps:
 
 Saves T1 and Flair to output folders
 """
-
+import shutil
 from dipy.denoise.nlmeans import nlmeans
 from dipy.io.image import load_nifti, save_nifti
 import argparse
-import subprocess 
+import subprocess
 import nibabel as nib
 import numpy as np
 import ants
-from __future__ import print_function
 import SimpleITK as sitk
 import sys
 import os
+import pathlib
 from joblib import Parallel, delayed
 
-#parser = argparse.ArgumentParser(description='Get all command line arguments.')
-#parser.add_argument('--input_flair', type=str, help='Input file location of FLAIR')
-#parser.add_argument('--input_t1', type=str, help='Input file location of T1')
-#parser.add_argument('--save_file', type=str, help='Where to save output file of nii.gz')
-
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('--flair_dir', type=str, help='Directory with FLAIR images')
+parser.add_argument('--flair_final_dir', type=str, default='FLAIR_processed', help='Directory to store processed FLAIR images')
+parser.add_argument('--t1_dir', type=str, help='Directory with T1 images')
+parser.add_argument('--flair_prefix', type=str, help='name ending FLAIR')
+parser.add_argument('--t1_prefix', type=str, help='name ending T1')
+parser.add_argument('--root_dir', type=str, help='Parent directory for FLAIR and T1. All temporary directories will be created in it')
+parser.add_argument('--save_tmp', action='store_true',
+                            help='if sent, does not delete temporary directories')
 
 """
 Preprocessing functions
 """
 
+
 def denoise(input_filename, output_filename):
     data, affine = load_nifti(input_filename)
     den = nlmeans(data, sigma=3, patch_radius=3)
     save_nifti(output_filename, den, affine)
-    
+
 
 def register_T1toFLAIR(flair_filename, t1_filename, t1_output_filename):
     fi = ants.image_read(flair_filename)
     mi = ants.image_read(t1_filename)
-    orientation = nib.load(flair_filename).affine #To save the FLAIR orientation
-    mytx = ants.registration(fixed=fi, moving=mi, type_of_transform = 'Rigid' ) #RIGID registration
-    T1_numpy = mytx['warpedmovout'].numpy()  #Convert the registered image to numpy array
+    orientation = nib.load(flair_filename).affine  # To save the FLAIR orientation
+    mytx = ants.registration(fixed=fi, moving=mi, type_of_transform='Rigid')  # RIGID registration
+    T1_numpy = mytx['warpedmovout'].numpy()  # Convert the registered image to numpy array
     nifti_out = nib.Nifti1Image(T1_numpy, affine=orientation)
-    nifti_out.to_filename(t1_output_filename) #save registered T1 image
-    
-    
-def hdbet_toT1(t1_filename, output_filename):
-    subprocess.call(['hd-bet', '-i', t1_filename, '-o', output_filename])
-    
-    
+    nifti_out.to_filename(t1_output_filename)  # save registered T1 image
+
+
 def brain_masking_toFLAIR(flair_filename, brainmask_filename, output_filename):
     flair = ants.image_read(flair_filename).numpy()
     mask = ants.image_read(brainmask_filename).numpy()
-    orientation = nib.load(flair_filename).affine #To save the FLAIR orientation
+    orientation = nib.load(flair_filename).affine  # To save the FLAIR orientation
     flair_masked = flair * mask
     nifti_out = nib.Nifti1Image(flair_masked, affine=orientation)
-    nifti_out.to_filename(output_filename) #save masked FLAIR image
-    
+    nifti_out.to_filename(output_filename)  # save masked FLAIR image
+
+
 def bias_correction(input_filepath, output_filepath, shrink_factor=None, image_mask=None, n_iter=None, n_fit=4):
     inputImage = sitk.ReadImage(input_filepath, sitk.sitkFloat32)
     image = inputImage
@@ -75,57 +77,118 @@ def bias_correction(input_filepath, output_filepath, shrink_factor=None, image_m
     else:
         maskImage = sitk.OtsuThreshold(inputImage, 0, 1, 200)
     if shrink_factor is not None:
-        image = sitk.Shrink(inputImage,[int(shrink_factor)] * inputImage.GetDimension())
-        maskImage = sitk.Shrink(maskImage,[int(shrink_factor)] * inputImage.GetDimension())
+        image = sitk.Shrink(inputImage, [int(shrink_factor)] * inputImage.GetDimension())
+        maskImage = sitk.Shrink(maskImage, [int(shrink_factor)] * inputImage.GetDimension())
     corrector = sitk.N4BiasFieldCorrectionImageFilter()
     if n_iter is not None:
         corrector.SetMaximumNumberOfIterations([int(n_iter)] * n_fit)
     corrected_image = corrector.Execute(image, maskImage)
-#    log_bias_field = corrector.GetLogBiasFieldAsImage(inputImage)
-#    corrected_image_full_resolution = inputImage / sitk.Exp( log_bias_field ) 
+    #    log_bias_field = corrector.GetLogBiasFieldAsImage(inputImage)
+    #    corrected_image_full_resolution = inputImage / sitk.Exp( log_bias_field )
     sitk.WriteImage(corrected_image, output_filepath)
-       
-def preprocessing_pipeline1(args):
-    """Denoising and registration.
-    Results are saved to denoised_(flait|t1)/ and registered_t1/
-    Returns the filenames 
-    """
-    flair_filename, t1_filename, root_dir = args
-    
-    # saves to the denoise_flair and denoise_T1 directories
-    # TODO: make sure that these directories exist before the loop
-    flair_d_filename = os.path.join(root_dir, "denoised_flair", os.path.basename(flair_filename))
-    t1_d_filename = os.path.join(root_dir, "denoised_t1", os.path.basename(t1_filename))
-    denoise(flair_filename, flair_d_filename)
-    denoise(t1_filename, t1_d_filename)
-    
-    # registration
-    t1_dr_filename = os.path.join(root_dir, "registered_t1", os.path.basename(t1_filename))
-    register_T1toFLAIR(flair_d_filename, t1_d_filename, t1_dr_filename)
-    
-    
-def preprocessing_pipeline2(args):
-    """Apply brain masking and skull striping to flair 
-    and save it to masked_flair/ and FLAIR_final/.
-    """
-    flair_d_filename, brainmask_filename, root_dir = args
-    # TODO: make sure that these directories exist before the loop
-    
-    # brain masking
-    flair_dm_filename = os.path.join(root_dir, "masked_flair", os.path.basename(flair_d_filename))
-    brain_masking_toFLAIR(flair_d_filename, brainmask_filename, flair_dm_filename)
-    
-    # bias correction
-    flair_f_filename = os.path.join(root_dir, "FLAIR_final", os.path.basename(flair_d_filename))
-    bias_correction(flair_dm_filename, flair_f_filename, 
-                    shrink_factor=None, image_mask=None, n_iter=None, n_fit=4)
-    
 
-def preprocessing_pipeline(args, opt):
+
+def preprocessing_pipeline(arg, opt):
     """Apply full preprocessing pipeline to FLAIR images 
     and save them to FLAIR_FINAL/
     """
-    args2 = Parallel(n_jobs=opt.n_jobs)(delayed(preprocessing_pipeline1)(i) for arg in args)
-    
-    
-    
+
+    def get_brainmask_name(t1_hdbet_filename_):
+        name_split = t1_hdbet_filename_.split('.')
+        brainmask_name = name_split[0] + '_mask'
+        for resid in name_split[1:]:
+            brainmask_name += ('.' + resid)
+        return brainmask_name
+
+    flair_filepath, t1_filepath = arg
+    root_dir = opt.root_dir
+
+    # denoising
+    flair_d_filepath = os.path.join(root_dir, "denoised_flair", os.path.basename(flair_filepath))
+    t1_d_filepath = os.path.join(root_dir, "denoised_t1", os.path.basename(t1_filepath))
+    denoise(input_filename=flair_filepath, output_filename=flair_d_filepath)
+    denoise(input_filename=t1_filepath, output_filename=t1_d_filepath)
+
+    # registration
+    t1_dr_filepath = os.path.join(root_dir, "registered_t1", os.path.basename(t1_filepath))
+    register_T1toFLAIR(flair_filename=flair_d_filepath,
+                       t1_filename=t1_d_filepath, t1_output_filename=t1_dr_filepath)
+
+    # skull striping
+    t1_hdbet_filepath = os.path.join(root_dir, "registered_t1", os.path.basename(t1_dr_filepath))
+    brainmask_filepath = os.path.join(root_dir, "registered_t1",
+                                      get_brainmask_name(os.path.basename(t1_dr_filepath)))
+    res = subprocess.call(
+        ['hd-bet', '-i', t1_dr_filepath, '-o', t1_hdbet_filepath],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+
+    # brain masking
+    flair_dm_filepath = os.path.join(root_dir, "masked_flair", os.path.basename(flair_d_filepath))
+    brain_masking_toFLAIR(flair_d_filepath, brainmask_filepath, flair_dm_filepath)
+
+    # bias correction
+    flair_f_filepath = os.path.join(root_dir, opt.flair_final_dir, os.path.basename(flair_dm_filepath))
+    bias_correction(flair_dm_filepath, flair_f_filepath,
+                    shrink_factor=None, image_mask=None, n_iter=None, n_fit=4)
+
+
+"""
+Supporting functions
+"""
+
+def parse_arguments(opt):
+    """Parse all the flair and corresponding filenames from folders
+    Returns the list of arguments for `preprocessing_pipeline`
+    """
+    def check_similarity():
+        """Check that actually files matched correctly and return the list of arguments
+        """
+        assert len(flair_filepaths) == len(
+            t1_filepaths), f"Found {len(flair_filepaths)} flair files and {len(t1_filepaths)}"
+        args = []
+        for p1, p2 in zip(flair_filepaths, t1_filepaths):
+            if os.path.basename(p1)[:-len(flair_prefix)] == os.path.basename(p2)[:-len(t1_prefix)]:
+                args.append((p1, p2))
+            else:
+                raise ValueError(f"{p1} and {p2} do not match")
+        return args
+
+    flair_dir = opt.flair_dir
+    t1_dir = opt.t1_dir
+    flair_prefix = opt.flair_prefix
+    t1_prefix = opt.t1_prefix
+
+    flair_filepaths = sorted(
+        list(pathlib.Path(flair_dir).glob(f'**/*{flair_prefix}'))
+    )
+    t1_filepaths = sorted(
+        list(pathlib.Path(t1_dir).glob(f'**/*{t1_prefix}'))
+    )
+
+    return check_similarity()
+
+
+def create_directories(opt):
+    root_dir = opt.root_dir
+
+    for dir_name in TEMP_DIRNAMES + [opt.flair_final_dir]:
+        os.makedirs(os.path.join(root_dir, dir_name), exist_ok=True)
+
+
+def remove_directories(opt):
+    root_dir = opt.root_dir
+
+    for dir_name in TEMP_DIRNAMES:
+        shutil.rmtree(os.path.join(root_dir, dir_name))
+
+
+if __name__ == '__main__':
+    OPT = parser.parse_args()
+    ARGS = parse_arguments(OPT)
+    TEMP_DIRNAMES = ['denoised_flair', 'denoised_t1', 'registered_t1', 'masked_flair']
+    create_directories(OPT)
+    for arg in ARGS:
+        preprocessing_pipeline(arg=arg, opt=OPT)
+    if not OPT.save_tmp:
+        remove_directories(OPT)
