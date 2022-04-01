@@ -37,7 +37,7 @@ parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='na
 parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
 parser.add_argument('--check_dataset', action='store_true',
                     help='if sent, checks that FLAIR and semg masks names correspond to each other')
-parser.add_argument('--output_file', type=str, required=True, "Specifily the file to store the results")
+parser.add_argument('--output_file', type=str, "Specifily the file to store the results")
 
 # Set device
 def get_default_device():
