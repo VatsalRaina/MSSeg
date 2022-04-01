@@ -37,7 +37,7 @@ parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='na
 parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
 parser.add_argument('--check_dataset', action='store_true',
                     help='if sent, checks that FLAIR and semg masks names correspond to each other')
-
+parser.add_argument('--output_file', type=str, required=True, "Specifily the file to store the results")
 
 # Set device
 def get_default_device():
@@ -97,9 +97,9 @@ def main(args):
     print("-------------------------------------------------------------------")
     print("Welcome!")
     print()
-    print('The MS lesion segmentation will be computed on the following files: ')
-    print()
-    print(test_files)
+    #print('The MS lesion segmentation will be computed on the following files: ')
+    #print()
+    #print(test_files)
     print()
     print("-------------------------------------------------------------------")
     print()
@@ -173,8 +173,10 @@ def main(args):
     thresholds = np.linspace(0.0,1.0,20, endpoint=False)
     # thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
+    f = open(args.output_file, "w")
+    f.write(f"Threshold\tDSCnorm\n")
     for th in thresholds:
-        print("Threshold", th)
+        f.write(f"{th}\t")
         dsc_norm_sum = 0.0
         metric_count = 0
         for outputs, gt in zip(all_patient_outputs, all_gts):
@@ -212,13 +214,13 @@ def main(args):
             metric_count += 1
 
         dsc_norm = dsc_norm_sum / metric_count
-        print(dsc_norm)
+        f.write(f"{dsc_norm}\n")
         if dsc_norm > best_dsc_norm:
             best_dsc_norm = dsc_norm
             best_th = th
 
-    print("Operating threshold:", best_th)
-
+    f.write(f"Operating threshold\t{best_th}\n")
+    f.close()
             
 
 #%%

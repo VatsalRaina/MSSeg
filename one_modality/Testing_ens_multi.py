@@ -40,7 +40,7 @@ parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='na
 parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
 parser.add_argument('--check_dataset', action='store_true',
                     help='if sent, checks that FLAIR and semg masks names correspond to each other')
-parser.add_argument('--output_file')
+parser.add_argument('--output_file', type=str, required=True, "Specifily the file to store the results")
 
 
 # Set device
@@ -100,8 +100,8 @@ def main(args):
     print("-------------------------------------------------------------------")
     print("Welcome!")
     print()
-    print('The MS lesion segmentation will be computed on the following files: ')
-    print()
+    #print('The MS lesion segmentation will be computed on the following files: ')
+    #print()
     #print(test_files)
     print()
     print("-------------------------------------------------------------------")
@@ -133,7 +133,7 @@ def main(args):
     act = Activations(softmax=True)
     
     for i, model in enumerate(models):
-        model.load_state_dict(torch.load(root_dir + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
+        model.load_state_dict(torch.load(os.path.join(root_dir, "seed" + str(i+1), "Best_model_finetuning.pth")))
         model.eval()
 
     print()
@@ -224,13 +224,13 @@ def main(args):
 
         with open(args.output_file, 'w') as f:
             dsc = dsc_sum / metric_count
-            f.write("DSC:", dsc, '\n')
+            f.write(f"DSC\t{dsc}\n")
             dsc_norm = dsc_norm_sum / metric_count
-            f.write("DSC norm:", dsc_norm, '\n')
+            f.write(f"DSCnorm\t{dsc_norm}\n")
             fpr = fpr_sum / metric_count
-            f.write("FPR:", fpr, '\n')
+            f.write(f"FPR\t{fpr}\n")
             fnr = fnr_sum / metric_count
-            f.write("FNR:", fnr, '\n')
+            f.write(f"FNR\t{fnr}\n")
             
 
 #%%
