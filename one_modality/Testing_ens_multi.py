@@ -40,6 +40,7 @@ parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='na
 parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
 parser.add_argument('--check_dataset', action='store_true',
                     help='if sent, checks that FLAIR and semg masks names correspond to each other')
+parser.add_argument('--output_file')
 
 
 # Set device
@@ -101,7 +102,7 @@ def main(args):
     print()
     print('The MS lesion segmentation will be computed on the following files: ')
     print()
-    print(test_files)
+    #print(test_files)
     print()
     print("-------------------------------------------------------------------")
     print()
@@ -221,14 +222,15 @@ def main(args):
 
             metric_count += 1
 
-        dsc = dsc_sum / metric_count
-        print("DSC:", dsc)
-        dsc_norm = dsc_norm_sum / metric_count
-        print("DSC norm:", dsc_norm)
-        fpr = fpr_sum / metric_count
-        print("FPR:", fpr)
-        fnr = fnr_sum / metric_count
-        print("FNR:", fnr)
+        with open(args.output_file, 'w') as f:
+            dsc = dsc_sum / metric_count
+            f.write("DSC:", dsc, '\n')
+            dsc_norm = dsc_norm_sum / metric_count
+            f.write("DSC norm:", dsc_norm, '\n')
+            fpr = fpr_sum / metric_count
+            f.write("FPR:", fpr, '\n')
+            fnr = fnr_sum / metric_count
+            f.write("FNR:", fnr, '\n')
             
 
 #%%
