@@ -32,6 +32,8 @@ parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--path_gts_train', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_gts_dev', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_gts_test', type=str, default='', help='Specify the path to the test gts directory')
+parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
+parser.add_argument('--img_filepath', type=str, default="", help='path to the image to be saved')
 
 # Set device
 def get_default_device():
@@ -53,27 +55,30 @@ def main(args):
     # Choose device
     device = get_default_device()
 
-    segs_train = sorted(glob(os.path.join(args.path_gts_train, "*gt.nii")),
+    segs_train = sorted(glob(os.path.join(args.path_gts_train, f"*{args.gts_prefix}")),
                   key=lambda i: int(re.sub('\D', '', i)))  
-    N = (len(segs_train)) 
+    N = (len(segs_train))
+    print(f"found {N} train images")
     indices = np.arange(N)
     v=indices[:]
     files_train=[]
     for j in v:
         files_train = files_train + [{"label": seg} for seg in segs_train[j:j+1]]
    
-    segs_dev = sorted(glob(os.path.join(args.path_gts_dev, "*gt.nii")),
+    segs_dev = sorted(glob(os.path.join(args.path_gts_dev, f"*{args.gts_prefix}")),
                   key=lambda i: int(re.sub('\D', '', i)))  
     N = (len(segs_dev)) 
+    print(f"found {N} dev images")
     indices = np.arange(N)
     v=indices[:]
     files_dev=[]
     for j in v:
         files_dev = files_dev + [{"label": seg} for seg in segs_dev[j:j+1]]
 
-    segs_test = sorted(glob(os.path.join(args.path_gts_test, "*gt.nii")),
+    segs_test = sorted(glob(os.path.join(args.path_gts_test, f"*{args.gts_prefix}")),
                   key=lambda i: int(re.sub('\D', '', i)))  
-    N = (len(segs_test)) 
+    N = (len(segs_test))
+    print(f"found {N} test images")
     indices = np.arange(N)
     v=indices[:]
     files_test=[]
@@ -104,7 +109,7 @@ def main(args):
 
     with torch.no_grad():
         for count, batch_data in enumerate(loader_train):
-            print(count)
+#            print(count)
             gt  = (batch_data["label"].type(torch.LongTensor).to(device))
             val_labels = gt.cpu().numpy()
             gt = np.squeeze(val_labels)
@@ -135,9 +140,13 @@ def main(args):
         data.append({"Lesion Load": load, "Split": "Test"})
 
     df = pd.DataFrame(data)
+    df_name = args.img_filepath.split('.')[0]
+    df_name += '.csv'
+    df.to_csv(df_name)
 
-    sns.histplot(data=df, x="Lesion Load", hue="Split")
-    plt.savefig('splitLoad.png', bbox_inches="tight")
+    h = sns.histplot(data=df, x="Lesion Load", hue="Split")
+    h.set_xticklabels(h.get_xticks(), rotation=45)
+    plt.savefig(args.img_filepath, bbox_inches="tight")
     plt.clf()
 #%%
 if __name__ == "__main__":

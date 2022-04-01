@@ -33,7 +33,10 @@ parser.add_argument('--path_data', type=str, default='', help='Specify the path 
 parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the dir to al the trained models')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the segmentations')
-
+parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='name ending FLAIR')
+parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
+parser.add_argument('--check_dataset', action='store_true',
+                    help='if sent, checks that FLAIR and semg masks names correspond to each other')
 
 
 # Set device
@@ -43,6 +46,17 @@ def get_default_device():
         return torch.device('cuda')
     else:
         return torch.device('cpu')
+    
+def check_dataset(flair_filepaths, gts_filepaths, args):
+    """Check that there are equal amounts of files in both lists and
+    the names before prefices are similar for each of the matched pairs of 
+    flair image filepath and gts filepath.
+    """
+    assert len(flair_filepaths) == len(
+            gts_filepaths), f"Found {len(flair_filepaths)} flair files and {len(gts_filepaths)}"
+    for p1, p2 in zip(flair_filepaths, gts_filepaths):
+        if os.path.basename(p1)[:-len(args.flair_prefix)] != os.path.basename(p2)[:-len(args.gts_prefix)]:
+            raise ValueError(f"{p1} and {p2} do not match")
 
 
 def main(args):
@@ -58,10 +72,12 @@ def main(args):
 
     root_dir= args.path_model  # Path where the trained model is saved
     path_data = args.path_data  # Path where the data is
-    flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
+    flair = sorted(glob(os.path.join(path_data, f"*{args.flair_prefix}")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs = sorted(glob(os.path.join(args.path_gts, "*gt.nii")),
-                  key=lambda i: int(re.sub('\D', '', i)))        
+    segs = sorted(glob(os.path.join(args.path_gts, f"*{args.gts_prefix}")),
+                  key=lambda i: int(re.sub('\D', '', i)))
+    if args.check_dataset:
+        check_dataset(flair, segs, args)     
 
 
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
