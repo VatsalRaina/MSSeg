@@ -100,6 +100,7 @@ def brain_masking_toFLAIR(flair_filename, brainmask_filename, output_filename):
 
 
 def bias_correction(input_filepath, output_filepath, shrink_factor=None, image_mask=None, n_iter=None, n_fit=4):
+    # TODO: fix the random seed
     inputImage = sitk.ReadImage(input_filepath, sitk.sitkFloat32)
     image = inputImage
     if image_mask is not None:
@@ -113,8 +114,8 @@ def bias_correction(input_filepath, output_filepath, shrink_factor=None, image_m
     if n_iter is not None:
         corrector.SetMaximumNumberOfIterations([int(n_iter)] * n_fit)
     corrected_image = corrector.Execute(image, maskImage)
-    #    log_bias_field = corrector.GetLogBiasFieldAsImage(inputImage)
-    #    corrected_image_full_resolution = inputImage / sitk.Exp( log_bias_field )
+    log_bias_field = corrector.GetLogBiasFieldAsImage(inputImage)
+    corrected_image_full_resolution = inputImage / sitk.Exp( log_bias_field )
     sitk.WriteImage(corrected_image, output_filepath)
 
 
@@ -229,7 +230,7 @@ if __name__ == '__main__':
     i_count = 0
     for arg in ARGS:
         preprocessing_pipeline(arg=arg, opt=OPT)
-        if i_count % 10: print(f"processed {i_count} images")
+        if i_count % 10 == 0: print(f"processed {i_count} images")
         i_count += 1
     if not OPT.save_tmp:
         print("removing temporary dirs")
