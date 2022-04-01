@@ -39,7 +39,7 @@ parser.add_argument('--path_save', type=str, default='', help='Specify the path 
 parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='name ending FLAIR')
 parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
 parser.add_argument('--output_file', type=str, default='', required=True, 
-                    "Specifily the file to store the results")
+                    help="Specifily the file to store the results")
 parser.add_argument('--check_dataset', action='store_true',
                     help='if sent, checks that FLAIR and semg masks names correspond to each other')
 
