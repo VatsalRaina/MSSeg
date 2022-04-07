@@ -75,19 +75,19 @@ def main(args):
     for j in v:
         test_files = test_files + [{"image": fl, "label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
 
-    print("Testing cases:", len(test_files))
+    # print("Testing cases:", len(test_files))
     
-    print()
-    print("-------------------------------------------------------------------")
-    print("Welcome!")
-    print()
-    print('The MS lesion segmentation will be computed on the following files: ')
-    print()
-    print(test_files)
-    print()
-    print("-------------------------------------------------------------------")
-    print()
-    print('Loading the files and the trained network')
+    # print()
+    # print("-------------------------------------------------------------------")
+    # print("Welcome!")
+    # print()
+    # print('The MS lesion segmentation will be computed on the following files: ')
+    # print()
+    # print(test_files)
+    # print()
+    # print("-------------------------------------------------------------------")
+    # print()
+    # print('Loading the files and the trained network')
    
     val_transforms = Compose(
     [
@@ -112,8 +112,8 @@ def main(args):
     subject=0
     model.load_state_dict(torch.load(os.path.join(root_dir, "Best_model_finetuning.pth")))
     
-    print()
-    print('Running the inference, please wait... ')
+    # print()
+    # print('Running the inference, please wait... ')
     
     th = args.threshold
     r = 0.001
@@ -208,14 +208,14 @@ def main(args):
             # write_nifti(data2,name,affine=affine,target_affine=original_affine,
             #             output_spatial_shape=spatial_shape)        
 
-        dsc = dsc_sum / metric_count
-        print("DSC:", dsc)
+        # dsc = dsc_sum / metric_count
+        # print("DSC:", dsc)
         dsc_norm = dsc_norm_sum / metric_count
         print("DSC norm:", dsc_norm)
-        fpr = fpr_sum / metric_count
-        print("FPR:", fpr)
-        fnr = fnr_sum / metric_count
-        print("FNR:", fnr)
+        # fpr = fpr_sum / metric_count
+        # print("FPR:", fpr)
+        # fnr = fnr_sum / metric_count
+        # print("FNR:", fnr)
             
             
 
