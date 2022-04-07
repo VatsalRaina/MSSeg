@@ -33,12 +33,31 @@ from Uncertainty import ensemble_uncertainties_classification
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
+parser.add_argument('--patient_num', type=int, default=0, help='Specify 1 patient to permit parallel processing')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
+parser.add_argument('--i_seed', type=int, default=-1, help='if num_models==1, it will use the i_seed model for predictions')
+parser.add_argument('--unc_metric', type=str, default="reverse_mutual_information", help='name of a single uncertainty metric')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the dir to al the trained models')
-parser.add_argument('--patient_num', type=int, default=0, help='Specify 1 patient to permit parallel processing')
+parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the segmentations')
+parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='name ending FLAIR')
+parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
+parser.add_argument('--output_file', type=str, default='', required=True, 
+                    help="Specifily the file to store the results")
+parser.add_argument('--check_dataset', action='store_true',
+                    help='if sent, checks that FLAIR and semg masks names correspond to each other')
 
+def check_dataset(flair_filepaths, gts_filepaths, args):
+    """Check that there are equal amounts of files in both lists and
+    the names before prefices are similar for each of the matched pairs of 
+    flair image filepath and gts filepath.
+    """
+    assert len(flair_filepaths) == len(
+            gts_filepaths), f"Found {len(flair_filepaths)} flair files and {len(gts_filepaths)}"
+    for p1, p2 in zip(flair_filepaths, gts_filepaths):
+        if os.path.basename(p1)[:-len(args.flair_prefix)] != os.path.basename(p2)[:-len(args.gts_prefix)]:
+            raise ValueError(f"{p1} and {p2} do not match")
 
 
 # Set device
@@ -205,10 +224,12 @@ def main(args):
 
     root_dir= args.path_model  # Path where the trained model is saved
     path_data = args.path_data  # Path where the data is
-    flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
+    flair = sorted(glob(os.path.join(path_data, f"*{args.flair_prefix}")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs = sorted(glob(os.path.join(args.path_gts, "*gt.nii")),
-                  key=lambda i: int(re.sub('\D', '', i)))        
+    segs = sorted(glob(os.path.join(args.path_gts, f"*{args.gts_prefix}")),
+                  key=lambda i: int(re.sub('\D', '', i)))
+    if args.check_dataset:
+        check_dataset(flair, segs, args)        
 
 
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
@@ -230,7 +251,7 @@ def main(args):
     print()
     print('The MS lesion segmentation will be computed on the following files: ')
     print()
-    print(test_files)
+#    print(test_files)
     print()
     print("-------------------------------------------------------------------")
     print()
@@ -260,52 +281,68 @@ def main(args):
 
     act = Activations(softmax=True)
     
-    for i, model in enumerate(models):
-        model.load_state_dict(torch.load(root_dir + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
-        model.eval()
+    if K > 1:
+        for i, model in enumerate(models):
+            model.load_state_dict(torch.load(root_dir + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
+            model.eval()
+    elif K == 1:
+        pthfilepath = os.path.join(root_dir, "seed" + str(args.i_seed), "Best_model_finetuning.pth")
+        if os.path.exists(pthfilepath):
+            model.load_state_dict(torch.load(pthfilepath))
+            model.eval()
+        else:
+            raise FileNotFoundError(f"model file {pthfilepath} does not exist")
+    else:
+        raise ValueError(f"invalid number of num_models {args.num_models}")
 
     print()
     print('Running the inference, please wait... ')
     
     th = args.threshold
+    
+    unc_metric = args.unc_metric
 
     all_vals_dsc = {
+            unc_metric: 0.0
         # "confidence": 0.0,
         # "entropy_of_expected": 0.0,
         # "expected_entropy": 0.0,
         # "mutual_information": 0.0,
         # "epkl": 0.0,
-        "reverse_mutual_information": 0.0
+        # "reverse_mutual_information": 0.0
         # "ideal": 0.0,
         # "random": 0.0
         }
     all_vals_dsc_norm = {
+        unc_metric: 0.0
         # "confidence": 0.0,
         # "entropy_of_expected": 0.0,
         # "expected_entropy": 0.0,
         # "mutual_information": 0.0,
         # "epkl": 0.0,
-        "reverse_mutual_information": 0.0
+        # "reverse_mutual_information": 0.0
         # "ideal": 0.0,
         # "random": 0.0
         }
     all_vals_fpr = {
+        unc_metric: 0.0
         # "confidence": 0.0,
         # "entropy_of_expected": 0.0,
         # "expected_entropy": 0.0,
         # "mutual_information": 0.0,
         # "epkl": 0.0,
-        "reverse_mutual_information": 0.0
+        # "reverse_mutual_information": 0.0
         # "ideal": 0.0,
         # "random": 0.0
         }
     all_vals_fnr = {
+        unc_metric: 0.0
         # "confidence": 0.0,
         # "entropy_of_expected": 0.0,
         # "expected_entropy": 0.0,
         # "mutual_information": 0.0,
         # "epkl": 0.0,
-        "reverse_mutual_information": 0.0
+        # "reverse_mutual_information": 0.0
         # "ideal": 0.0,
         # "random": 0.0
         }
@@ -317,7 +354,7 @@ def main(args):
             num_patients += 1
             # if count != args.patient_num:
             #     continue
-            print("Patient num: ", count)
+#            print("Patient num: ", count)
             inputs, gt  = (
                     batch_data["image"].to(device),#.unsqueeze(0),
                      batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
@@ -368,7 +405,7 @@ def main(args):
                 if unc_key != "reverse_mutual_information":
                     continue
                 auc_dsc, auc_dsc_norm, auc_fpr, auc_fnr = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), plot=False)
-                print(unc_key, auc_dsc_norm)
+#                print(unc_key, auc_dsc_norm)
                 all_vals_dsc[unc_key] += 1. - auc_dsc
                 all_vals_dsc_norm[unc_key] += 1. - auc_dsc_norm
                 all_vals_fpr[unc_key] += 1. - auc_fpr
@@ -395,18 +432,19 @@ def main(args):
             else:
                 value = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
                 dsc = value.sum().item()
-            print("Dice score:", dsc)
+#            print("Dice score:", dsc)
 
     print("Mean across all patients:")
     
-    for unc_key, sum_aac in all_vals_dsc.items():
-        print(unc_key, sum_aac/num_patients)
-    for unc_key, sum_aac in all_vals_dsc_norm.items():
-        print(unc_key, sum_aac/num_patients)
-    for unc_key, sum_aac in all_vals_fpr.items():
-        print(unc_key, sum_aac/num_patients)
-    for unc_key, sum_aac in all_vals_fnr.items():
-        print(unc_key, sum_aac/num_patients)
+    with open(args.output_file, 'w') as f:
+        for unc_key, sum_aac in all_vals_dsc.items():
+            f.write(f"{unc_key}\t{sum_aac/num_patients}\n")
+        for unc_key, sum_aac in all_vals_dsc_norm.items():
+            f.write(f"{unc_key}\t{sum_aac/num_patients}\n")
+        for unc_key, sum_aac in all_vals_fpr.items():
+            f.write(f"{unc_key}\t{sum_aac/num_patients}\n")
+        for unc_key, sum_aac in all_vals_fnr.items():
+            f.write(f"{unc_key}\t{sum_aac/num_patients}\n")
 
 #%%
 if __name__ == "__main__":
