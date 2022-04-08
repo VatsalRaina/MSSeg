@@ -125,10 +125,8 @@ def main(args):
 
     K = args.num_models
 
-    models = []
-    for i in range(K):
-        models.append(UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
-                    strides=(2, 2, 2, 2),num_res_units=0).to(device))
+    model = UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
+                    strides=(2, 2, 2, 2),num_res_units=0).to(device)
      
 
     act = Activations(softmax=True)
@@ -156,16 +154,10 @@ def main(args):
             roi_size = (96, 96, 96)
             sw_batch_size = 4
 
-            all_outputs = []
-            for model in models:
-                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-                outputs_o = (act(outputs))
-                outputs = act(outputs).cpu().numpy()
-                outputs = np.squeeze(outputs[0,1])
-                all_outputs.append(outputs)
-            all_outputs = np.asarray(all_outputs)
-            outputs = np.mean(all_outputs, axis=0)
-
+            outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+            outputs_o = (act(outputs))
+            outputs = act(outputs).cpu().numpy()
+            outputs = np.squeeze(outputs[0,1])
             
             outputs[outputs>th]=1
             outputs[outputs<th]=0
