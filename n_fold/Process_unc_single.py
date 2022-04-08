@@ -227,11 +227,9 @@ def main(args):
 
 
             # Calculate all AUC-DSCs
-            for unc_key, curr_uncs in uncs.items():
-                if unc_key != "unc":
-                    continue
-                auc_dsc_norm = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), plot=False)
-                all_vals_dsc_norm[unc_key] += 1. - auc_dsc_norm
+
+            auc_dsc_norm = get_unc_score(gt.flatten(), seg.flatten(), uncs.flatten(), plot=False)
+            all_vals_dsc_norm['unc'] += 1. - auc_dsc_norm
 
 
     # print("Mean across all patients:")
