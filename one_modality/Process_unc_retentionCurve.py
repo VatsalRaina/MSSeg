@@ -409,7 +409,7 @@ def main(args):
     # dsc_scores3 = np.mean(all_curves_dsc3, axis=0)
     dsc_norm_scores3 = np.mean(all_curves_dsc_norm3, axis=0)
     
-    metrics.auc(fracs_retained, dsc_norm_scores3)
+    print(metrics.auc(fracs_retained, dsc_norm_scores3))
 
     # plt.plot(fracs_retained, dsc_scores1, label="MSSEG")
     # plt.plot(fracs_retained, dsc_scores2, label="PubMRI")
