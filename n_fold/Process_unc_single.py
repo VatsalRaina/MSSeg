@@ -166,7 +166,7 @@ def main(args):
 
     act = Activations(softmax=True)
 
-    model.load_state_dict(torch.load(root_dir + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
+    model.load_state_dict(torch.load(root_dir + "/Best_model_finetuning.pth"))
     model.eval()
 
     # print()
