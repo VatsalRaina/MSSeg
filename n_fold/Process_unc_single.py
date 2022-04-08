@@ -198,7 +198,7 @@ def main(args):
             outputs = np.squeeze(outputs[0,1])
 
             # Get all uncertainties
-            uncs = -1 * ( outputs*np.log(outputs) + (1.-outputs)*np.log(1.-outputs) )
+            uncs = -1 * ( outputs*np.log(outputs + 1e-10) + (1.-outputs)*np.log(1.-outputs + 1e-10) )
             
             outputs[outputs>th]=1
             outputs[outputs<th]=0
