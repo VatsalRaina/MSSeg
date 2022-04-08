@@ -203,15 +203,15 @@ def main(args):
 
     K = args.num_models
 
-    models1 = []
-    for i in range(K):
-        models1.append(UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
-                    strides=(2, 2, 2, 2),num_res_units=0).to(device))
+    # models1 = []
+    # for i in range(K):
+    #     models1.append(UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
+    #                 strides=(2, 2, 2, 2),num_res_units=0).to(device))
 
-    models2 = []
-    for i in range(K):
-        models2.append(UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
-                    strides=(2, 2, 2, 2),num_res_units=0).to(device))
+    # models2 = []
+    # for i in range(K):
+    #     models2.append(UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
+    #                 strides=(2, 2, 2, 2),num_res_units=0).to(device))
 
     models3 = []
     for i in range(K):
@@ -220,13 +220,13 @@ def main(args):
 
     act = Activations(softmax=True)
     
-    for i, model in enumerate(models1):
-        model.load_state_dict(torch.load(args.path_model1 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
-        model.eval()
+    # for i, model in enumerate(models1):
+    #     model.load_state_dict(torch.load(args.path_model1 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
+    #     model.eval()
 
-    for i, model in enumerate(models2):
-        model.load_state_dict(torch.load(args.path_model2 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
-        model.eval()
+    # for i, model in enumerate(models2):
+    #     model.load_state_dict(torch.load(args.path_model2 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
+    #     model.eval()
 
     for i, model in enumerate(models3):
         model.load_state_dict(torch.load(args.path_model3 + "seed" + str(i+1) + "/Best_model_finetuning.pth"))
@@ -263,92 +263,92 @@ def main(args):
             val_labels = gt.cpu().numpy()
             gt = np.squeeze(val_labels)
 
-            all_outputs = []
-            for model in models1:
-                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-                outputs_o = (act(outputs))
-                outputs = act(outputs).cpu().numpy()
-                outputs = np.squeeze(outputs[0,1])
-                all_outputs.append(outputs)
-            all_outputs = np.asarray(all_outputs)
-            outputs = np.mean(all_outputs, axis=0)
+            # all_outputs = []
+            # for model in models1:
+            #     outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+            #     outputs_o = (act(outputs))
+            #     outputs = act(outputs).cpu().numpy()
+            #     outputs = np.squeeze(outputs[0,1])
+            #     all_outputs.append(outputs)
+            # all_outputs = np.asarray(all_outputs)
+            # outputs = np.mean(all_outputs, axis=0)
 
-            # Get all uncertainties
-            uncs = ensemble_uncertainties_classification( np.concatenate( (np.expand_dims(all_outputs, axis=-1), np.expand_dims(1.-all_outputs, axis=-1)), axis=-1) )
+            # # Get all uncertainties
+            # uncs = ensemble_uncertainties_classification( np.concatenate( (np.expand_dims(all_outputs, axis=-1), np.expand_dims(1.-all_outputs, axis=-1)), axis=-1) )
             
-            outputs[outputs>th]=1
-            outputs[outputs<th]=0
-            seg= np.squeeze(outputs)
+            # outputs[outputs>th]=1
+            # outputs[outputs<th]=0
+            # seg= np.squeeze(outputs)
 
-            """
-            Remove connected components smaller than 10 voxels
-            """
-            l_min = 9
-            labeled_seg, num_labels = ndimage.label(seg)
-            label_list = np.unique(labeled_seg)
-            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
+            # """
+            # Remove connected components smaller than 10 voxels
+            # """
+            # l_min = 9
+            # labeled_seg, num_labels = ndimage.label(seg)
+            # label_list = np.unique(labeled_seg)
+            # num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
 
-            seg2 = np.zeros_like(seg)
-            for l in range(len(num_elements_by_lesion)):
-                if num_elements_by_lesion[l] > l_min:
-            # assign voxels to output
-                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
-                    seg2[current_voxels[:, 0],
-                        current_voxels[:, 1],
-                        current_voxels[:, 2]] = 1
-            seg=np.copy(seg2) 
+            # seg2 = np.zeros_like(seg)
+            # for l in range(len(num_elements_by_lesion)):
+            #     if num_elements_by_lesion[l] > l_min:
+            # # assign voxels to output
+            #         current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+            #         seg2[current_voxels[:, 0],
+            #             current_voxels[:, 1],
+            #             current_voxels[:, 2]] = 1
+            # seg=np.copy(seg2) 
 
-            # Calculate all AUC-DSCs
-            for unc_key, curr_uncs in uncs.items():
-                if unc_key != "reverse_mutual_information":
-                    continue
-                fracs_retained, dsc_curve, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
-            all_curves_dsc1.append(dsc_curve)
-            all_curves_dsc_norm1.append(dsc_norm_curve)
+            # # Calculate all AUC-DSCs
+            # for unc_key, curr_uncs in uncs.items():
+            #     if unc_key != "reverse_mutual_information":
+            #         continue
+            #     fracs_retained, dsc_curve, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
+            # all_curves_dsc1.append(dsc_curve)
+            # all_curves_dsc_norm1.append(dsc_norm_curve)
 
 
-            all_outputs = []
-            for model in models2:
-                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-                outputs_o = (act(outputs))
-                outputs = act(outputs).cpu().numpy()
-                outputs = np.squeeze(outputs[0,1])
-                all_outputs.append(outputs)
-            all_outputs = np.asarray(all_outputs)
-            outputs = np.mean(all_outputs, axis=0)
+            # all_outputs = []
+            # for model in models2:
+            #     outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+            #     outputs_o = (act(outputs))
+            #     outputs = act(outputs).cpu().numpy()
+            #     outputs = np.squeeze(outputs[0,1])
+            #     all_outputs.append(outputs)
+            # all_outputs = np.asarray(all_outputs)
+            # outputs = np.mean(all_outputs, axis=0)
 
-            # Get all uncertainties
-            uncs = ensemble_uncertainties_classification( np.concatenate( (np.expand_dims(all_outputs, axis=-1), np.expand_dims(1.-all_outputs, axis=-1)), axis=-1) )
+            # # Get all uncertainties
+            # uncs = ensemble_uncertainties_classification( np.concatenate( (np.expand_dims(all_outputs, axis=-1), np.expand_dims(1.-all_outputs, axis=-1)), axis=-1) )
             
-            outputs[outputs>th]=1
-            outputs[outputs<th]=0
-            seg= np.squeeze(outputs)
+            # outputs[outputs>th]=1
+            # outputs[outputs<th]=0
+            # seg= np.squeeze(outputs)
 
-            """
-            Remove connected components smaller than 10 voxels
-            """
-            l_min = 9
-            labeled_seg, num_labels = ndimage.label(seg)
-            label_list = np.unique(labeled_seg)
-            num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
+            # """
+            # Remove connected components smaller than 10 voxels
+            # """
+            # l_min = 9
+            # labeled_seg, num_labels = ndimage.label(seg)
+            # label_list = np.unique(labeled_seg)
+            # num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
 
-            seg2 = np.zeros_like(seg)
-            for l in range(len(num_elements_by_lesion)):
-                if num_elements_by_lesion[l] > l_min:
-            # assign voxels to output
-                    current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
-                    seg2[current_voxels[:, 0],
-                        current_voxels[:, 1],
-                        current_voxels[:, 2]] = 1
-            seg=np.copy(seg2) 
+            # seg2 = np.zeros_like(seg)
+            # for l in range(len(num_elements_by_lesion)):
+            #     if num_elements_by_lesion[l] > l_min:
+            # # assign voxels to output
+            #         current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
+            #         seg2[current_voxels[:, 0],
+            #             current_voxels[:, 1],
+            #             current_voxels[:, 2]] = 1
+            # seg=np.copy(seg2) 
 
-            # Calculate all AUC-DSCs
-            for unc_key, curr_uncs in uncs.items():
-                if unc_key != "reverse_mutual_information":
-                    continue
-                fracs_retained, dsc_curve, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
-            all_curves_dsc2.append(dsc_curve)
-            all_curves_dsc_norm2.append(dsc_norm_curve)
+            # # Calculate all AUC-DSCs
+            # for unc_key, curr_uncs in uncs.items():
+            #     if unc_key != "reverse_mutual_information":
+            #         continue
+            #     fracs_retained, dsc_curve, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
+            # all_curves_dsc2.append(dsc_curve)
+            # all_curves_dsc_norm2.append(dsc_norm_curve)
 
 
             all_outputs = []
@@ -395,39 +395,41 @@ def main(args):
             all_curves_dsc_norm3.append(dsc_norm_curve)
 
 
-    all_curves_dsc1 = np.asarray(all_curves_dsc1)
-    all_curves_dsc_norm1 = np.asarray(all_curves_dsc_norm1)
-    all_curves_dsc2 = np.asarray(all_curves_dsc2)
-    all_curves_dsc_norm2 = np.asarray(all_curves_dsc_norm2)
-    all_curves_dsc3 = np.asarray(all_curves_dsc3)
+    # all_curves_dsc1 = np.asarray(all_curves_dsc1)
+    # all_curves_dsc_norm1 = np.asarray(all_curves_dsc_norm1)
+    # all_curves_dsc2 = np.asarray(all_curves_dsc2)
+    # all_curves_dsc_norm2 = np.asarray(all_curves_dsc_norm2)
+    # all_curves_dsc3 = np.asarray(all_curves_dsc3)
     all_curves_dsc_norm3 = np.asarray(all_curves_dsc_norm3)
     
-    dsc_scores1 = np.mean(all_curves_dsc1, axis=0)
-    dsc_norm_scores1 = np.mean(all_curves_dsc_norm1, axis=0)
-    dsc_scores2 = np.mean(all_curves_dsc2, axis=0)
-    dsc_norm_scores2 = np.mean(all_curves_dsc_norm2, axis=0)
-    dsc_scores3 = np.mean(all_curves_dsc3, axis=0)
+    # dsc_scores1 = np.mean(all_curves_dsc1, axis=0)
+    # dsc_norm_scores1 = np.mean(all_curves_dsc_norm1, axis=0)
+    # dsc_scores2 = np.mean(all_curves_dsc2, axis=0)
+    # dsc_norm_scores2 = np.mean(all_curves_dsc_norm2, axis=0)
+    # dsc_scores3 = np.mean(all_curves_dsc3, axis=0)
     dsc_norm_scores3 = np.mean(all_curves_dsc_norm3, axis=0)
     
-    plt.plot(fracs_retained, dsc_scores1, label="MSSEG")
-    plt.plot(fracs_retained, dsc_scores2, label="PubMRI")
-    plt.plot(fracs_retained, dsc_scores3, label="Combined")
-    plt.xlabel("Retention Fraction")
-    plt.ylabel("DSC")
-    plt.xlim([0.0,1.01])
-    plt.legend()
-    plt.savefig('unc_ret_dsc.png')
-    plt.clf()
+    metrics.auc(fracs_retained, dsc_norm_scores3)
 
-    plt.plot(fracs_retained, dsc_norm_scores1, label="MSSEG")
-    plt.plot(fracs_retained, dsc_norm_scores2, label="PubMRI")
-    plt.plot(fracs_retained, dsc_norm_scores3, label="Combined")
-    plt.xlabel("Retention Fraction")
-    plt.ylabel(r"$\overline{DSC}$")
-    plt.xlim([0.0,1.01])
-    plt.legend()
-    plt.savefig('unc_ret_dsc_norm.png')
-    plt.clf()
+    # plt.plot(fracs_retained, dsc_scores1, label="MSSEG")
+    # plt.plot(fracs_retained, dsc_scores2, label="PubMRI")
+    # plt.plot(fracs_retained, dsc_scores3, label="Combined")
+    # plt.xlabel("Retention Fraction")
+    # plt.ylabel("DSC")
+    # plt.xlim([0.0,1.01])
+    # plt.legend()
+    # plt.savefig('unc_ret_dsc.png')
+    # plt.clf()
+
+    # plt.plot(fracs_retained, dsc_norm_scores1, label="MSSEG")
+    # plt.plot(fracs_retained, dsc_norm_scores2, label="PubMRI")
+    # plt.plot(fracs_retained, dsc_norm_scores3, label="Combined")
+    # plt.xlabel("Retention Fraction")
+    # plt.ylabel(r"$\overline{DSC}$")
+    # plt.xlim([0.0,1.01])
+    # plt.legend()
+    # plt.savefig('unc_ret_dsc_norm.png')
+    # plt.clf()
 
 #%%
 if __name__ == "__main__":
