@@ -123,8 +123,6 @@ def main(args):
     val_ds = CacheDataset(data=test_files, transform=val_transforms, cache_rate=0.5, num_workers=0)
     val_loader = DataLoader(val_ds, batch_size=1, num_workers=0)
 
-    K = args.num_models
-
     model = UNet(dimensions=3,in_channels=1, out_channels=2,channels=(32, 64, 128, 256, 512),
                     strides=(2, 2, 2, 2),num_res_units=0).to(device)
      
