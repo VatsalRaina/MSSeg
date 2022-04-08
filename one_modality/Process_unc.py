@@ -287,11 +287,8 @@ def main(args):
             model.eval()
     elif K == 1:
         pthfilepath = os.path.join(root_dir, "seed" + str(args.i_seed), "Best_model_finetuning.pth")
-        if os.path.exists(pthfilepath):
-            model.load_state_dict(torch.load(pthfilepath))
-            model.eval()
-        else:
-            raise FileNotFoundError(f"model file {pthfilepath} does not exist")
+        models[0].load_state_dict(torch.load(pthfilepath))
+        models[0].eval()
     else:
         raise ValueError(f"invalid number of num_models {args.num_models}")
 
