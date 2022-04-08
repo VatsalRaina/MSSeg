@@ -399,14 +399,13 @@ def main(args):
 
             # Calculate all AUC-DSCs
             for unc_key, curr_uncs in uncs.items():
-                if unc_key != "reverse_mutual_information":
-                    continue
-                auc_dsc, auc_dsc_norm, auc_fpr, auc_fnr = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), plot=False)
-#                print(unc_key, auc_dsc_norm)
-                all_vals_dsc[unc_key] += 1. - auc_dsc
-                all_vals_dsc_norm[unc_key] += 1. - auc_dsc_norm
-                all_vals_fpr[unc_key] += 1. - auc_fpr
-                all_vals_fnr[unc_key] += 1. - auc_fnr
+                if unc_key == unc_metric:
+                    auc_dsc, auc_dsc_norm, auc_fpr, auc_fnr = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), plot=False)
+    #                print(unc_key, auc_dsc_norm)
+                    all_vals_dsc[unc_key] += 1. - auc_dsc
+                    all_vals_dsc_norm[unc_key] += 1. - auc_dsc_norm
+                    all_vals_fpr[unc_key] += 1. - auc_fpr
+                    all_vals_fnr[unc_key] += 1. - auc_fnr
 
             # # Get ideal values
             # auc_dsc = get_unc_score(gt.flatten(), seg.flatten(), np.absolute(gt.flatten()-seg.flatten()), plot=False)
