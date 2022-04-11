@@ -248,11 +248,19 @@ def main(args):
             all_curves_dsc_norm.append(dsc_norm_curve)
 
 
-    all_curves_dsc_norm3 = np.asarray(all_curves_dsc_norm3)
-    dsc_norm_scores3 = np.mean(all_curves_dsc_norm3, axis=0)
+    all_curves_dsc_norm = np.asarray(all_curves_dsc_norm)
+    dsc_norm_scores = np.mean(all_curves_dsc_norm, axis=0)
     
-    print(metrics.auc(fracs_retained, dsc_norm_scores3))
+    print(metrics.auc(fracs_retained, dsc_norm_scores))
 
+    with open(args.path_save, 'wb') as f:
+        np.save(f, dsc_norm_scores)
+        np.save(f, fracs_retained)
+
+# To load
+    # with open(args.path_load, 'rb') as f:
+    #     dsc_norm_scores = np.load(f)
+    #     fracs_retained = np.load(f)
 
 #%%
 if __name__ == "__main__":
