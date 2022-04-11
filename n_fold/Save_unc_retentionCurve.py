@@ -243,7 +243,7 @@ def main(args):
             for unc_key, curr_uncs in uncs.items():
                 if unc_key != "reverse_mutual_information":
                     continue
-                fracs_retained, dsc_curve, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), n_jobs=args.n_jobs)
+                fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), n_jobs=args.n_jobs)
             all_curves_dsc_norm.append(dsc_norm_curve)
 
 
