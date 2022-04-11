@@ -106,6 +106,7 @@ def main(args):
             uncs_value = ensemble_uncertainties_classification(
                 np.concatenate((np.expand_dims(all_outputs, axis=-1), np.expand_dims(1. - all_outputs, axis=-1)),
                                axis=-1))[args.unc_metric]
+            # print("uns", uncs_value)
 
             outputs_mean[outputs_mean > args.threshold] = 1
             outputs_mean[outputs_mean < args.threshold] = 0
@@ -117,10 +118,11 @@ def main(args):
 
             # Calculate all AUC-DSCs
             auc_dsc_norm = get_dsc_norm_auc(gts=gt.flatten(), preds=seg.flatten(),
-                                            uncs=uncs_value,
+                                            uncs=uncs_value.flatten(),
                                             n_jobs=args.n_jobs,
                                             plot=False, save_path=None)
-            dsc_norm_aac_value += 1. - auc_dsc_norm
+            # print("auc", auc_dsc_norm)
+            dsc_norm_aac_value += (1. - auc_dsc_norm)
 
     # compute the average
     dsc_norm_aac_value /= num_patients
