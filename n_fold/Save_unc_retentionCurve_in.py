@@ -38,12 +38,16 @@ from Uncertainty import ensemble_uncertainties_classification
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
-parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
-parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
+parser.add_argument('--path_gts1', type=str, default='', help='Specify the path to the test gts directory')
+parser.add_argument('--path_data2', type=str, default='', help='Specify the path to the test data files directory')
+parser.add_argument('--path_gts2', type=str, default='', help='Specify the path to the test gts directory')
+parser.add_argument('--path_data3', type=str, default='', help='Specify the path to the test data files directory')
+parser.add_argument('--path_gts3', type=str, default='', help='Specify the path to the test gts directory')
+parser.add_argument('--path_data4', type=str, default='', help='Specify the path to the test data files directory')
+parser.add_argument('--path_gts4', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the dir to all the trained models')
 parser.add_argument('--n_jobs', type=int, default=1, help='Number of cpu cores to use')
 parser.add_argument('--path_save', type=str, default='', help='Save path for numpy array')
-
 
 
 # Set device
@@ -125,21 +129,37 @@ def main(args):
     # Choose device
     device = get_default_device()
 
-    path_data = args.path_data  # Path where the data is
-    flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
+    root_dir= args.path_model  # Path where the trained model is saved
+
+    flair1 = sorted(glob(os.path.join(args.path_data1, "*FLAIR.nii.gz")),
                  key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs = sorted(glob(os.path.join(args.path_gts, "*gt.nii")),
+    segs1 = sorted(glob(os.path.join(args.path_gts1, "*gt.nii")),
                   key=lambda i: int(re.sub('\D', '', i)))        
-
-
-    N = (len(flair)) 
-
-    indices = np.arange(N)
-    v=indices[:]
+    flair2 = sorted(glob(os.path.join(args.path_data2, "*FLAIR.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
+    segs2 = sorted(glob(os.path.join(args.path_gts2, "*gt.nii")),
+                  key=lambda i: int(re.sub('\D', '', i)))
+    flair3 = sorted(glob(os.path.join(args.path_data3, "*FLAIR.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
+    segs3 = sorted(glob(os.path.join(args.path_gts3, "*gt.nii")),
+                  key=lambda i: int(re.sub('\D', '', i)))
+    flair4 = sorted(glob(os.path.join(args.path_data4, "*FLAIR.nii.gz")),
+                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
+    segs4 = sorted(glob(os.path.join(args.path_gts4, "*gt.nii")),
+                  key=lambda i: int(re.sub('\D', '', i)))
 
     test_files=[]
-    for j in v:
-        test_files = test_files + [{"image": fl, "label": seg} for fl, seg in zip(flair[j:j+1], segs[j:j+1])]
+    for j in range(len(flair1)):
+        test_files = test_files + [{"image": fl, "label": seg} for fl, seg in zip(flair1[j:j+1], segs1[j:j+1])]
+
+    for j in range(len(flair2)):
+        test_files = test_files + [{"image": fl, "label": seg} for fl, seg in zip(flair2[j:j+1], segs2[j:j+1])]
+
+    for j in range(len(flair3)):
+        test_files = test_files + [{"image": fl, "label": seg} for fl, seg in zip(flair3[j:j+1], segs3[j:j+1])]
+
+    for j in range(len(flair4)):
+        test_files = test_files + [{"image": fl, "label": seg} for fl, seg in zip(flair4[j:j+1], segs4[j:j+1])]
 
     print("Testing cases:", len(test_files))
     
