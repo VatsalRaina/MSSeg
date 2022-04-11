@@ -41,7 +41,6 @@ parser.add_argument('--num_models', type=int, default=5, help='Number of models 
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the dir to all the trained models')
-parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
 parser.add_argument('--n_jobs', type=int, default=1, help='Number of cpu cores to use')
 parser.add_argument('--path_save', type=str, default='', help='Save path for numpy array')
 
