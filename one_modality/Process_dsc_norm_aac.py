@@ -80,6 +80,7 @@ def main(args):
         raise ValueError(f"invalid number of num_models {args.num_models}")
 
     # %%
+    print("Computing DSC_norm AAC")
     dsc_norm_aac_value = 0.0
     num_patients = 0
     with torch.no_grad():
