@@ -38,6 +38,7 @@ from Uncertainty import ensemble_uncertainties_classification
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
+parser.add_argument('--path_data1', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_gts1', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_data2', type=str, default='', help='Specify the path to the test data files directory')
 parser.add_argument('--path_gts2', type=str, default='', help='Specify the path to the test gts directory')
