@@ -29,7 +29,7 @@ def main(args):
 
     plt.plot(fracs_retained, dsc_norm_scores1, label="In")
     plt.plot(fracs_retained, dsc_norm_scores2, label="Out")
-    # plt.plot(fracs_retained, dsc_norm_scores3, label="Lausanne")
+    plt.plot(fracs_retained, dsc_norm_scores3, label="Lausanne")
     plt.xlabel("Retention Fraction")
     plt.ylabel(r"$\overline{DSC}$")
     plt.xlim([0.0,1.01])
