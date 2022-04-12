@@ -24,6 +24,9 @@ def main(args):
     with open(args.path_load2, 'rb') as f:
         dsc_norm_scores2 = np.load(f)
 
+    with open(args.path_load3, 'rb') as f:
+        dsc_norm_scores3 = np.load(f)
+
     plt.plot(fracs_retained, dsc_norm_scores1, label="In")
     plt.plot(fracs_retained, dsc_norm_scores2, label="Out")
     # plt.plot(fracs_retained, dsc_norm_scores3, label="Lausanne")
