@@ -111,13 +111,48 @@ def plot_retention_curve(gts, preds, dsc_norm_scores, fracs_retained, n_jobs=Non
     plt.savefig(save_path)
     plt.clf()
 
+def get_dsc_norm(gts, preds, uncs, n_jobs=None):
+    """ Get DSC_norm-AUC
+    
+    Parameters:
+        - gts (1D numpy.ndarray) - ground truth
+        - preds (1D numpy.ndarray) - predicted labels
+        - uncs (1D numpy.ndarray) - uncertainty metrics evaluation
+        - plot (bool) - if True, plots retention curve
+        - n_jobs (int|None) - number of paraller jobs, joblib parameter.
+        - save_path (path|None) - path to figure to be saved.
+    Returns:
+        area under retention curve (dice norm vs retention fraction)
+    """
+    def compute_dice_norm(frac_, preds_, gts_, N_):
+        pos = int(N_ * frac_)
+        curr_preds = preds if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
+        return dice_norm_metric(gts_, curr_preds)[0]
+
+    ordering = uncs.argsort()
+    gts = gts[ordering]
+    preds = preds[ordering]
+    N = len(gts)
+
+    # # Significant class imbalance means it is important to use logspacing between values
+    # # so that it is more granular for the higher retention fractions
+    fracs_retained = np.log(np.arange(200 + 1)[1:])
+    fracs_retained /= np.amax(fracs_retained)
+
+    process = partial(compute_dice_norm, preds_=preds, gts_=gts, N_=N)
+    dsc_norm_scores = np.asarray(
+        Parallel(n_jobs=n_jobs)(delayed(process)(frac) for frac in fracs_retained)
+    )
+
+    return dsc_norm_scores
 
 def get_dsc_norm_auc(gts, preds, uncs, n_jobs=None, plot=True, save_path=None):
     """ Get DSC_norm-AUC
+    
     Parameters:
-        - gts () - ground truth
-        - preds () - predicted labels
-        - uncs () - uncertainty metrics evaluation
+        - gts (1D numpy.ndarray) - ground truth
+        - preds (1D numpy.ndarray) - predicted labels
+        - uncs (1D numpy.ndarray) - uncertainty metrics evaluation
         - plot (bool) - if True, plots retention curve
         - n_jobs (int|None) - number of paraller jobs, joblib parameter.
         - save_path (path|None) - path to figure to be saved.

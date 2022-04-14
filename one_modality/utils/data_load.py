@@ -72,3 +72,9 @@ def remove_connected_components(segmentation, l_min=9):
                  current_voxels[:, 1],
                  current_voxels[:, 2]] = 1
     return seg2
+
+def generate_pred_filename(gt_filename):
+    """Create the file name of the prediction from the name of the segmentation
+    in a form: <gt_filename_base>_pred.nii.gz
+    """
+    return gt_filename.split('.')[0] + '_pred.nii.gz'
