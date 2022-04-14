@@ -4,6 +4,7 @@ from sklearn import metrics
 from joblib import Parallel, delayed
 from functools import partial
 import os
+from .visualise import plot_retention_curve_single
 
 
 def dice_metric(ground_truth, predictions):
@@ -68,49 +69,6 @@ def dice_norm_metric(ground_truth, predictions):
         return dsc_norm, fpr, fnr
 
 
-def plot_retention_curve(gts, preds, dsc_norm_scores, fracs_retained, n_jobs=None, save_path=None):
-    def compute_dice_norm(frac_, preds_, gts_, N_):
-        pos = int(N_ * frac_)
-        curr_preds = preds if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
-        return dice_norm_metric(gts_, curr_preds)[0]
-
-    N = len(gts)
-
-    uncs_ideal = np.absolute(gts - preds)
-    ordering = uncs_ideal.argsort()
-    gts_ideal = gts[ordering].copy()
-    preds_ideal = preds[ordering].copy()
-
-    uncs_random = np.linspace(0, 1000, len(gts))
-    np.random.seed(0)
-    np.random.shuffle(uncs_random)
-    ordering = uncs_random.argsort()
-    gts_random = gts[ordering].copy()
-    preds_random = preds[ordering].copy()
-
-    with Parallel(n_jobs=n_jobs) as parallel:
-        process = partial(compute_dice_norm, preds_=preds_ideal, gts_=gts_ideal, N_=N)
-        dsc_scores_ideal = np.asarray(
-            parallel(delayed(process)(frac) for frac in fracs_retained)
-        )
-        process = partial(compute_dice_norm, preds_=preds_random, gts_=gts_random, N_=N)
-        dsc_scores_random = np.asarray(
-            parallel(delayed(process)(frac) for frac in fracs_retained)
-        )
-
-    plt.plot(fracs_retained, dsc_norm_scores, label="Uncertainty")
-    plt.plot(fracs_retained, dsc_scores_ideal, label="Ideal")
-    plt.plot(fracs_retained, dsc_scores_random, label="Random")
-    plt.xlabel("Retention Fraction")
-    plt.ylabel("DSC")
-    plt.xlim([0.0, 1.01])
-    plt.legend()
-    if save_path is None:
-        save_path = os.path.join(os.getcwd(), "unc_ret.jpg")
-        print(f"Saving figure at {save_path}")
-    plt.savefig(save_path)
-    plt.clf()
-
 def get_dsc_norm(gts, preds, uncs, n_jobs=None):
     """ Get DSC_norm-AUC
     
@@ -146,6 +104,7 @@ def get_dsc_norm(gts, preds, uncs, n_jobs=None):
 
     return dsc_norm_scores
 
+
 def get_dsc_norm_auc(gts, preds, uncs, n_jobs=None, plot=True, save_path=None):
     """ Get DSC_norm-AUC
     
@@ -180,6 +139,36 @@ def get_dsc_norm_auc(gts, preds, uncs, n_jobs=None, plot=True, save_path=None):
     )
 
     if plot:
-        plot_retention_curve(gts, preds, dsc_norm_scores, fracs_retained, n_jobs=n_jobs, save_path=save_path)
+        plot_retention_curve_single(gts, preds, dsc_norm_scores, fracs_retained, n_jobs=n_jobs, save_path=save_path)
 
     return metrics.auc(fracs_retained, dsc_norm_scores)
+
+
+def get_metric_for_rf(gts, preds, uncs, metric_name, fracs_retained, n_jobs=None):
+    def compute_dice_norm(frac_, preds_, gts_, N_, ind_ret):
+        pos = int(N_ * frac_)
+        curr_preds = preds_ if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
+        return dice_norm_metric(gts_, curr_preds)[ind_ret]
+
+    def compute_dice(frac_, preds_, gts_, N_):
+        pos = int(N_ * frac_)
+        curr_preds = preds_ if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
+        return dice_metric(gts_, curr_preds)
+
+    ordering = uncs.argsort()
+    gts = gts[ordering]
+    preds = preds[ordering]
+    N = len(gts)
+
+    if metric_name == 'dsc_norm':
+        process = partial(compute_dice_norm, preds_=preds, gts_=gts, N_=N, ind_ret=0)
+    elif metric_name == 'fpr':
+        process = partial(compute_dice_norm, preds_=preds, gts_=gts, N_=N, ind_ret=1)
+    elif metric_name == 'fnr':
+        process = partial(compute_dice_norm, preds_=preds, gts_=gts, N_=N, ind_ret=2)
+    elif metric_name == 'dice':
+        process = partial(compute_dice, preds_=preds, gts_=gts, N_=N)
+    else:
+        raise NotImplementedError
+
+    return Parallel(n_jobs=n_jobs)(delayed(process)(frac) for frac in fracs_retained)

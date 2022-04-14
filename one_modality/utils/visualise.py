@@ -14,14 +14,14 @@ import os
 from .metrics import *
 
 
-def plot_retention_curve(gts, preds, dsc_norm_scores, fracs_retained, n_jobs=None, save_path=None):
+def plot_retention_curve_single(gts, preds, dsc_norm_scores, fracs_retained, n_jobs=None, save_path=None, unc_name=None):
     """
-    For the precomputed normalized dice score for different retention fractioons.
+    For the precomputed normalized dice score for different retention fractions for a single subject.
     Called by metrics.get_dsc_norm_auc.
     """
     def compute_dice_norm(frac_, preds_, gts_, N_):
         pos = int(N_ * frac_)
-        curr_preds = preds if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
+        curr_preds = preds_ if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
         return dice_norm_metric(gts_, curr_preds)[0]
 
     N = len(gts)
@@ -51,12 +51,28 @@ def plot_retention_curve(gts, preds, dsc_norm_scores, fracs_retained, n_jobs=Non
     plt.plot(fracs_retained, dsc_norm_scores, label="Uncertainty")
     plt.plot(fracs_retained, dsc_scores_ideal, label="Ideal")
     plt.plot(fracs_retained, dsc_scores_random, label="Random")
-    plt.xlabel("Retention Fraction")
+    plt.xlabel(f"Retention Fraction ({unc_name})")
     plt.ylabel("DSC")
     plt.xlim([0.0, 1.01])
     plt.legend()
     if save_path is None:
         save_path = os.path.join(os.getcwd(), "unc_ret.jpg")
         print(f"Saving figure at {save_path}")
+    plt.savefig(save_path)
+    plt.clf()
+
+
+def plot_iqr_median_rc(metric_norm, fracs_ret, save_path):
+    """
+    Given the data frame with col: fracs_ret and index - scan plot the IQR, median retention curve
+    """
+    q1 = metric_norm.quantile(0.25)
+    q2 = metric_norm.median()
+    q3 = metric_norm.quantile(0.75)
+    plt.plot(fracs_ret, q2, '-k', label='median')
+
+    plt.fill_between(fracs_ret, q1, q3, color='gray', alpha=0.2, label='IQR')
+    plt.xlim([0, 1.01])
+    plt.legend()
     plt.savefig(save_path)
     plt.clf()
