@@ -36,7 +36,6 @@ from utils.visualise import plot_iqr_median_rc
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
-parser.add_argument('--patient_num', type=int, default=0, help='Specify 1 patient to permit parallel processing')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
 parser.add_argument('--i_seed', type=int, default=-1,
                     help='if num_models==1, it will use the i_seed model for predictions')
@@ -90,7 +89,7 @@ def main(args):
         raise ValueError(f"invalid number of num_models {args.num_models}")
 
     # %%
-    print("Computing DSC_norm AAC")
+    print("Computing DSC_norm")
     num_patients = 0
     fracs_ret = np.log(np.arange(200 + 1)[1:])
     fracs_ret /= np.amax(fracs_ret)
@@ -138,8 +137,10 @@ def main(args):
                                           metric_name=args.perf_metric,
                                           fracs_retained=fracs_ret,
                                           n_jobs=args.n_jobs)
-            metric_rf_df = metric_rf_df.append(pd.DataFrame(metric_rf, columns=fracs_ret), ignore_index=True)
+            metric_rf = pd.DataFrame([metric_rf], columns=fracs_ret)
+            metric_rf_df = metric_rf_df.append(metric_rf, ignore_index=True)
 
+    os.makedirs(args.output_dir, exist_ok=True)
     metric_rf_df.to_csv(os.path.join(args.output_dir, f"RC_{args.perf_metric}_{args.unc_metric}_df.csv"))
     plot_iqr_median_rc(metric_rf_df, fracs_ret, os.path.join(args.output_dir, f"RC_{args.perf_metric}_{args.unc_metric}_df.png"))
 
