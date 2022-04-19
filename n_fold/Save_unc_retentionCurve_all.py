@@ -252,7 +252,7 @@ def main(args):
                 all_curves_dsc_norm[unc_key].append(dsc_norm_curve)
 
     dsc_norm_scores = {}
-    for unc_key, dsc_norm_curves in all_curves_dsc_norm:
+    for unc_key, dsc_norm_curves in all_curves_dsc_norm.items():
         dsc_norm_scores[unc_key] = np.mean(np.asarray(dsc_norm_curves), axis=0)
         print(metrics.auc(fracs_retained, dsc_norm_scores[unc_key]))
         plt.plot(fracs_retained, dsc_norm_scores[unc_key], label=unc_key)
