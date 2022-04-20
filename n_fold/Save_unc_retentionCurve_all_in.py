@@ -283,7 +283,7 @@ def main(args):
     plt.ylabel("nDSC")
     plt.xlim([0.0,1.01])
     plt.legend()
-    plt.savefig('ret_out.png')
+    plt.savefig('ret_in.png')
     plt.clf()
 
 
