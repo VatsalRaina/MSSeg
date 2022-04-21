@@ -153,7 +153,7 @@ def main(args):
                      batch_data["label"].type(torch.LongTensor).to(device),)#.unsqueeze(0),)
             roi_size = (96, 96, 96)
             # sw_batch_size = 4
-            sw_batch_size = 16
+            sw_batch_size = 64
 
             tic = time.perf_counter()
             outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
