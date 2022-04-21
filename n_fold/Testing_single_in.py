@@ -3,6 +3,8 @@
          Adapted by Vatsal Raina
 """
 
+import time
+
 import argparse
 import os
 import torch
@@ -152,7 +154,10 @@ def main(args):
             roi_size = (96, 96, 96)
             sw_batch_size = 4
 
+            tic = time.perf_counter()
             outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+            toc = time.perf_counter()
+            print("Time taken for a single evaluation:", toc-tic)
             outputs_o = (act(outputs))
             outputs = act(outputs).cpu().numpy()
             outputs = np.squeeze(outputs[0,1])
