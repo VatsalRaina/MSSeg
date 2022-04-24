@@ -174,7 +174,7 @@ def main(args):
             pred_lesions, _ = ndimage.label(seg)
             for gt_les in gt_lesions:
                 for pred_les in pred_lesions:
-                    print(max(gt_les), max(pred_les))
+                    print(np.max(gt_les), np.max(pred_les))
                     intersection = np.sum(gt_les*pred_les)
                     if intersection > 0:
                         union = np.sum(gt_les) + np.sum(pred_les) - intersection
