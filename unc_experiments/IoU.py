@@ -174,22 +174,28 @@ def main(args):
             gt_labels = np.unique(gt_lesions)[1:]
             pred_lesions, _ = ndimage.label(seg)
             pred_labels = np.unique(pred_lesions)[1:]
-            for gt_lab in gt_labels:
 
+            all_gt_les = []
+            all_pred_les = []
+
+            for gt_lab in gt_labels:
                 gt_les = np.zeros_like(gt)
                 gt_current_voxels = np.stack(np.where(gt_lesions == gt_lab), axis=1)
                 gt_les[gt_current_voxels[:, 0],
                     gt_current_voxels[:, 1],
                     gt_current_voxels[:, 2]] = 1
+                all_gt_les.append(gt_les)
 
-                for pred_lab in pred_labels:
+            for pred_lab in pred_labels:
+                pred_les = np.zeros_like(seg)
+                pred_current_voxels = np.stack(np.where(pred_lesions == pred_lab), axis=1)
+                pred_les[pred_current_voxels[:, 0],
+                    pred_current_voxels[:, 1],
+                    pred_current_voxels[:, 2]] = 1
+                all_pred_les.append(pred_les)
 
-                    pred_les = np.zeros_like(seg)
-                    pred_current_voxels = np.stack(np.where(pred_lesions == pred_lab), axis=1)
-                    pred_les[pred_current_voxels[:, 0],
-                        pred_current_voxels[:, 1],
-                        pred_current_voxels[:, 2]] = 1
-
+            for gt_les in all_gt_les:
+                for pred_les in all_pred_les:
                     intersection = np.sum(gt_les*pred_les)
                     if intersection > 0:
                         union = np.sum(gt_les) + np.sum(pred_les) - intersection
