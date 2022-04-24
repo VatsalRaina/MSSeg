@@ -174,9 +174,11 @@ def main(args):
             pred_lesions, _ = ndimage.label(seg)
             for gt_les in gt_lesions:
                 for pred_les in pred_lesions:
+                    print(max(gt_les), max(pred_les))
                     intersection = np.sum(gt_les*pred_les)
-                    union = np.sum(gt_les) + np.sum(pred_les) - intersection
-                    all_IoU_scores.append(intersection/union)
+                    if intersection > 0:
+                        union = np.sum(gt_les) + np.sum(pred_les) - intersection
+                        all_IoU_scores.append(intersection/union)
 
     all_IoU_scores = np.asarray(all_IoU_scores)
 
