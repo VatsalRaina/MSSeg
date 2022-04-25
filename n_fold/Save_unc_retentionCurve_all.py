@@ -189,12 +189,13 @@ def main(args):
 
     num_patients = 0
     all_curves_dsc_norm = {
-        "confidence": [],
-        "entropy_of_expected": [],
-        "expected_entropy": [],
+        # "confidence": [],
+        # "entropy_of_expected": [],
+        # "expected_entropy": [],
         "mutual_information": [],
-        "epkl": [],
-        "reverse_mutual_information": []
+        "renyi_mutual_information": []
+        # "epkl": [],
+        # "reverse_mutual_information": []
         }
 
     with torch.no_grad():
@@ -248,6 +249,8 @@ def main(args):
 
             # Calculate all AUC-DSCs
             for unc_key, curr_uncs in uncs.items():
+                if unc_key not in all_curves_dsc_norm.keys():
+                    continue
                 fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), n_jobs=args.n_jobs)
                 all_curves_dsc_norm[unc_key].append(dsc_norm_curve)
 
