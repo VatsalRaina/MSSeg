@@ -4,7 +4,7 @@ Implementation of standard predictive uncertainty measures for image segmentatio
 
 import numpy as np
 
-def renyi_entropy_of_expected(probs, alpha=0.1):
+def renyi_entropy_of_expected(probs, alpha=0.8):
     """
     Renyi entropy is a generalised version of Shannon - the two are equivalent for alpha=1
     :param probs: array [num_models, num_voxels_X, num_voxels_Y, num_voxels_Z, num_classes]
@@ -14,7 +14,7 @@ def renyi_entropy_of_expected(probs, alpha=0.1):
     mean_probs = np.mean(probs, axis=0)
     return scale * np.log( np.sum(mean_probs**alpha, axis=-1) )
 
-def renyi_expected_entropy(probs, alpha=0.1):
+def renyi_expected_entropy(probs, alpha=0.8):
     """
     :param probs: array [num_models, num_voxels_X, num_voxels_Y, num_voxels_Z, num_classes]
     :return: array [num_voxels_X, num_voxels_Y, num_voxels_Z,]
