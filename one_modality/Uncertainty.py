@@ -4,6 +4,8 @@ Implementation of standard predictive uncertainty measures for image segmentatio
 
 import numpy as np
 from scipy import ndimage
+from utils.transforms import OneHotEncoding
+
 
 def entropy_of_expected(probs, epsilon=1e-10):
     """
@@ -50,7 +52,7 @@ def ensemble_uncertainties_classification(probs, epsilon=1e-10):
     return uncertainty
 
 
-def lesions_uncertainty_sum(uncs_mask, binary_mask):
+def lesions_uncertainty_sum(uncs_mask, binary_mask, one_hot=False):
     """
     Binary mask can be either gt or pred.
 
@@ -69,4 +71,6 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask):
         cc_mask = (multi_mask == cc_label).astype("float32")
         cc_unc = np.sum(uncs_mask * cc_mask) / np.sum(cc_mask)
         uncs_list.append(cc_unc)
-    return uncs_list, multi_mask
+    if one_hot:
+        return np.asarray(uncs_list), OneHotEncoding()(multi_mask)
+    return np.asarray(uncs_list), multi_mask
