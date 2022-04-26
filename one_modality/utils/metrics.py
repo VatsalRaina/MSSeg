@@ -4,6 +4,7 @@ from sklearn import metrics
 from joblib import Parallel, delayed
 from functools import partial
 import os
+from scipy import ndimage
 from .visualise import plot_retention_curve_single
 
 
@@ -67,6 +68,55 @@ def dice_norm_metric(ground_truth, predictions):
         else:
             fnr = fn / np.sum(gt)
         return dsc_norm, fpr, fnr
+
+
+def intersection_over_union(mask1, mask2):
+    """Compute IoU for 2 binary masks
+    mask1 and mask2 should have same dimensions
+    """
+    return np.sum(mask1 * mask2)/np.sum(mask1 + mask2 - mask1*mask2)
+
+
+def f1_lesion_metric(ground_truth, predictions, IoU_threshold):
+    """
+    For a single example returns DSC_norm, fpr, fnr
+
+    Parameters:
+        * ground_truth (numpy.ndarray) - size [H, W, D]
+        * predictions (numpy.ndarray) - size [H, W, D]
+        * IoU_threshold (float) - see description in the scientific report
+    """
+
+    tp, fp, fn = 0, 0, 0
+
+    mask_multi_gt = ndimage.label(ground_truth)
+    mask_multi_pred = ndimage.label(predictions)
+
+    for label_pred in np.unique(mask_multi_pred):
+        mask_label_pred = (mask_multi_pred == label_pred).astype(int)
+        all_iou = []
+        # find maximum non-zero IoU of the connected component in the prediction with the gt
+        for int_label_gt in np.unique(mask_multi_gt * mask_label_pred):    # iterate only intersections
+            mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
+            all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
+        max_iou = max(all_iou)
+        if max_iou >= IoU_threshold: tp += 1
+        else: fp += 1
+
+    # del mask_label_gt, mask_label_pred
+
+    for label_gt in np.unique(mask_multi_gt):
+        mask_label_gt = (mask_multi_gt == label_gt).astype(int)
+        all_iou = []
+        for int_label_pred in np.unique(mask_multi_pred * mask_label_gt):
+            mask_label_pred = (mask_multi_pred == int_label_pred).astype(int)
+            all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
+        max_iou = max(all_iou)
+        if 1 < max_iou < IoU_threshold: fn += 1
+
+    if tp + 0.5 * (fp + fn) == 0.0:
+        return 0
+    return tp/(tp + 0.5 * (fp + fn))
 
 
 def get_dsc_norm(gts, preds, uncs, n_jobs=None):
