@@ -117,12 +117,13 @@ def f1_lesion_metric(ground_truth, predictions, IoU_threshold):
     for label_gt in np.unique(mask_multi_gt):
         if label_gt != 0.0:
             mask_label_gt = (mask_multi_gt == label_gt).astype(int)
-            all_iou = []
+            all_iou = [0]
             for int_label_pred in np.unique(mask_multi_pred * mask_label_gt):
-                mask_label_pred = (mask_multi_pred == int_label_pred).astype(int)
-                all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
+                if int_label_pred != 0.0:
+                    mask_label_pred = (mask_multi_pred == int_label_pred).astype(int)
+                    all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
             max_iou = max(all_iou)
-            if 1 < max_iou < IoU_threshold: fn += 1
+            if max_iou < IoU_threshold: fn += 1
 
     if tp + 0.5 * (fp + fn) == 0.0:
         return 0
