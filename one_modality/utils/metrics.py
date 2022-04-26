@@ -100,11 +100,12 @@ def f1_lesion_metric(ground_truth, predictions, IoU_threshold):
     for label_pred in np.unique(mask_multi_pred):
         if label_pred != 0.0:
             mask_label_pred = (mask_multi_pred == label_pred).astype(int)
-            all_iou = []
+            all_iou = [0.0]
             # find maximum non-zero IoU of the connected component in the prediction with the gt
             for int_label_gt in np.unique(mask_multi_gt * mask_label_pred):  # iterate only intersections
-                mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
-                all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
+                if int_label_gt != 0.0:
+                    mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
+                    all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
             max_iou = max(all_iou)
             if max_iou >= IoU_threshold:
                 tp += 1
