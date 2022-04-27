@@ -5,4 +5,6 @@ one_modality/Process_unc_dc.py
 CMDs/
 chuv_hpc/
 .idea/
-
+**/tests/
+**/.ipynb_checkpoints/
+**/*.ipynb

@@ -20,9 +20,6 @@ from monai.transforms import (
     AddChanneld, Compose, CropForegroundd, LoadNiftid, Orientationd, RandCropByPosNegLabeld,
     ScaleIntensityRanged, Spacingd, ToTensord, ConcatItemsd, NormalizeIntensityd, RandFlipd,
     RandRotate90d, RandShiftIntensityd, RandAffined, RandSpatialCropd, AsDiscrete, Activations)
-import numpy as np
-from scipy import ndimage
-import matplotlib.pyplot as plt
 import seaborn as sns;
 
 sns.set_theme()
@@ -111,24 +108,24 @@ def main(args):
             all_outputs = []
             for model in models:
                 outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-                outputs = act(outputs).cpu().numpy()
-                all_outputs.append(np.squeeze(outputs[0, 1]))
-            all_outputs = np.asarray(all_outputs)
-            outputs_mean = np.mean(all_outputs, axis=0)
+                outputs = act(outputs).cpu().numpy()        # [1, C, H, W, D]
+                all_outputs.append(np.squeeze(outputs[0, 1]))   # [C, H, W, D]
+            all_outputs = np.asarray(all_outputs)        # [M, C, H, W, D]
+            outputs_mean = np.mean(all_outputs, axis=0)     # [C, H, W, D]
 
             outputs_mean[outputs_mean > args.threshold] = 1
             outputs_mean[outputs_mean < args.threshold] = 0
-            seg = np.squeeze(outputs_mean)
+            seg = np.squeeze(outputs_mean)      # [H, W, D]
             seg = remove_connected_components(segmentation=seg, l_min=9)
 
-            val_labels = gt.cpu().numpy()
-            gt = np.squeeze(val_labels)
+            val_labels = gt.cpu().numpy()   # [B, C, H, W, D]
+            gt = np.squeeze(val_labels)     # [C, H, W, D]
 
             # Get all uncertainties
             uncs_value = ensemble_uncertainties_classification(
                 np.concatenate((np.expand_dims(all_outputs, axis=-1),
                                 np.expand_dims(1. - all_outputs, axis=-1)),
-                               axis=-1))[args.unc_metric]
+                               axis=-1))[args.unc_metric]   # [B, C, H, W, D]
 
             metric_rf = get_metric_for_rc_lesion(gts=gt,
                                                  preds=seg,

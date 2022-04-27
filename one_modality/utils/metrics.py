@@ -94,8 +94,8 @@ def f1_lesion_metric(ground_truth, predictions, IoU_threshold):
 
     tp, fp, fn = 0, 0, 0
 
-    mask_multi_gt = ndimage.label(ground_truth)
-    mask_multi_pred = ndimage.label(predictions)
+    mask_multi_gt = ndimage.label(ground_truth)[0]
+    mask_multi_pred = ndimage.label(predictions)[0]
 
     for label_pred in np.unique(mask_multi_pred):
         if label_pred != 0.0:
@@ -272,11 +272,11 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
         elif in_gt:
             gt -= lesion_  # remove if it is fn
         else:
-            raise NotImplementedError
+            raise NotImplementedError("Lesion not found")
 
         # for tp also remove from gt corresponding lesion
         if in_pred:
-            mask_multi_gt = ndimage.label(gt)
+            mask_multi_gt = ndimage.label(gt)[0]
             max_iou = 0.0
             max_label = None
             for int_label_gt in np.unique(mask_multi_gt * lesion_):  # iterate only intersections
@@ -311,11 +311,12 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
     # sort uncertainties and lesions
     ordering = uncs_all.argsort()
     cc_mask_all = cc_mask_all[ordering]
-    preds_ = preds.copy()
-    gts_ = gts.copy()
+
+    preds_ = preds.copy().astype("int")
+    gts_ = gts.copy().astype("int")
 
     f1_values = []
-    for i_l, lesion in enumerate(cc_mask_all[::-1]):
+    for i_l, lesion in enumerate(cc_mask_all[::-1]):        # exclude the most uncertain lesion
         preds_, gts_ = retain_one_lesion(lesion_=lesion, pred=preds_, gt=gts_, IoU_threshold_=IoU_threshold)
         f1_values.append(f1_lesion_metric(ground_truth=gts_, predictions=preds_, IoU_threshold=IoU_threshold))
 

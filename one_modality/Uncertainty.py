@@ -65,12 +65,13 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, one_hot=False):
 
     index 0 in uncertainty list is background
     """
-    multi_mask = ndimage.label(binary_mask)        # connected components map
+    multi_mask = ndimage.label(binary_mask)[0]        # connected components map
     uncs_list = []
     for cc_label in np.unique(multi_mask):
-        cc_mask = (multi_mask == cc_label).astype("float32")
-        cc_unc = np.sum(uncs_mask * cc_mask) / np.sum(cc_mask)
-        uncs_list.append(cc_unc)
+        if cc_label != 0.0:                         # exclude background
+            cc_mask = (multi_mask == cc_label).astype("float32")
+            cc_unc = np.sum(uncs_mask * cc_mask) / np.sum(cc_mask)
+            uncs_list.append(cc_unc)
     if one_hot:
         return np.asarray(uncs_list), OneHotEncoding()(multi_mask)
     return np.asarray(uncs_list), multi_mask

@@ -17,7 +17,7 @@ class OneHotEncoding:
         Note: zero-label is inclluded
         """
         return np.stack([
-            (multi_mask == l).astype("float32") for l in np.unique(multi_mask)
+            (multi_mask == label).astype("float32") for label in np.unique(multi_mask) if label != 0.0
         ], axis=0)
 
 
@@ -35,14 +35,14 @@ def mask_encoding(lesion_masks_list, dtype="float32", mask_type='binary'):
             out_mask += fn_lesion.astype(dtype)
         return out_mask
     else:
-        return [lesion.astype(dtype) for lesions in lesion_masks_list]
+        return [lesion.astype(dtype) for lesion in lesion_masks_list]
 
 
 def get_FN_lesions_mask(ground_truth, predictions, IoU_threshold, mask_type='binary'):
     fn_lesions = []
 
-    mask_multi_gt = ndimage.label(ground_truth)
-    mask_multi_pred = ndimage.label(predictions)
+    mask_multi_gt = ndimage.label(ground_truth)[0]
+    mask_multi_pred = ndimage.label(predictions)[0]
 
     for label_gt in np.unique(mask_multi_gt):
         if label_gt != 0.0:
@@ -60,10 +60,12 @@ def get_FN_lesions_mask(ground_truth, predictions, IoU_threshold, mask_type='bin
 
 
 def get_TP_lesions_mask(ground_truth, predictions, IoU_threshold, mask_type='binary'):
+    raise NotImplementedError
+
     tp_lesions_gt, tp_lesions_pred = [], []
 
-    mask_multi_gt = ndimage.label(ground_truth)
-    mask_multi_pred = ndimage.label(predictions)
+    mask_multi_gt = ndimage.label(ground_truth)[0]
+    mask_multi_pred = ndimage.label(predictions)[0]
 
     for label_pred in np.unique(mask_multi_pred):
         if label_pred != 0.0:
