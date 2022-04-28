@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import ndimage
-from metrics import intersection_over_union
+from .metrics import intersection_over_union
 
 
 class OneHotEncoding:

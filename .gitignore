@@ -8,3 +8,4 @@ chuv_hpc/
 **/tests/
 **/.ipynb_checkpoints/
 **/*.ipynb
+.spyproject/

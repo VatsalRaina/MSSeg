@@ -5,7 +5,7 @@
          
          
          
-debugfile('/home/meri/Code/MSSeg/one_modality/lesion_scale_retention_curve.py', wdir='/home/meri/Code/MSSeg/one_modality', args='--threshold 0.35 --num_models 5 --path_data /home/meri/data/canonical/dev_in --path_gts /home/meri/data/canonical/dev_in --path_model /home/meri/uncertainty_challenge/models_cv/ex_ljubljana/ --path_save /home/meri/uncertainty_challenge/results/f1_lesion_score/ --flair_prefix FLAIR.nii.gz --gts_prefix gt.nii --check_dataset --n_jobs 10 --num_workers 10 --IoU_threshold 0.25')
+debugfile('/home/meri/Code/MSSeg/one_modality/lesion_scale_f1.py', wdir='/home/meri/Code/MSSeg/one_modality', args='--threshold 0.35 --num_models 5 --path_data /home/meri/data/canonical/dev_in --path_gts /home/meri/data/canonical/dev_in --path_model /home/meri/uncertainty_challenge/models_cv/ex_ljubljana/ --path_save /home/meri/uncertainty_challenge/results/f1_lesion_score/ --flair_prefix FLAIR.nii.gz --gts_prefix gt.nii --check_dataset --n_jobs 10 --num_workers 10 --IoU_threshold 0.25')
 """
 
 import argparse
@@ -32,7 +32,7 @@ from Uncertainty import ensemble_uncertainties_classification, lesions_uncertain
 import pandas as pd
 from utils.data_load import *
 from utils.setup import get_default_device
-from utils.metrics import get_metric_for_rc_lesion
+from utils.metrics import f1_lesion_metric
 from utils.visualise import plot_iqr_median_rc
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
@@ -88,15 +88,11 @@ def main(args):
         raise ValueError(f"invalid number of num_models {args.num_models}")
 
     # %%
-    print("Computing DSC_norm AAC")
+    print("Computing f1")
     num_patients = 0
-    fracs_ret = np.log(np.arange(200 + 1)[1:])
-    fracs_ret /= np.amax(fracs_ret)
-    metric_rf_df = pd.DataFrame([], columns=fracs_ret)
-    #     = dict(zip(
-    #     ['real', 'ideal', 'random'],
-    #     [pd.DataFrame([], columns=fracs_retained) for _ in range(3)]
-    # ))
+    f1_mean = 0.0
+    f1_list = []
+    subject_names = []
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
             # Get models predictions
@@ -111,6 +107,7 @@ def main(args):
             all_outputs = []
             for model in models:
                 outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+                outputs_o = (act(outputs))
                 outputs = act(outputs).cpu().numpy()        # [1, 2, H, W, D]
                 all_outputs.append(np.squeeze(outputs[0, 1]))
             all_outputs = np.asarray(all_outputs)        # [M, H, W, D]
@@ -125,24 +122,33 @@ def main(args):
             gt = np.squeeze(val_labels)     # [H, W, D]
 
             # Get all uncertainties
-            uncs_value = ensemble_uncertainties_classification(
-                np.concatenate((np.expand_dims(all_outputs, axis=-1),
-                                np.expand_dims(1. - all_outputs, axis=-1)),
-                               axis=-1))[args.unc_metric]   # [H, W, D]
+            # uncs_value = ensemble_uncertainties_classification(
+            #     np.concatenate((np.expand_dims(all_outputs, axis=-1),
+            #                     np.expand_dims(1. - all_outputs, axis=-1)),
+            #                    axis=-1))[args.unc_metric]   # [H, W, D]
             
 
-            metric_rf = get_metric_for_rc_lesion(gts=gt,
-                                                 preds=seg,
-                                                 uncs=uncs_value,
-                                                 fracs_retained=fracs_ret,
-                                                 IoU_threshold=args.IoU_threshold)
-            metric_rf_df = metric_rf_df.append(pd.DataFrame(metric_rf, columns=fracs_ret), ignore_index=True)
+            f1_lesion = f1_lesion_metric(ground_truth=gt, 
+                                         predictions=seg, 
+                                         IoU_threshold=args.IoU_threshold)
+            
+            f1_list.append(f1_lesion)
+            
+            meta_data = batch_data['image_meta_dict']
+            for i, data in enumerate(outputs_o):  
+                out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
 
-    os.makedirs(args.path_save, exists_ok=True)
-    metric_rf_df.to_csv(os.path.join(args.path_save, f"RC_{args.perf_metric}_{args.unc_metric}_df.csv"))
-    plot_iqr_median_rc(metric_rf_df, fracs_ret,
-                       os.path.join(args.path_save, f"RC_{args.perf_metric}_{args.unc_metric}_df.png"))
+            filename_or_obj = out_meta.get("filename_or_obj", None) if out_meta else None
+            subject_names.append(filename_or_obj)
+            
 
+    os.makedirs(args.path_save, exist_ok=True)
+    
+    metric_df = pd.DataFrame({"scan": subject_names, "f1_lesion": f1_list}, 
+                             columns=['scan', 'f1_lesion'])
+    metric_df.to_csv(os.path.join(args.path_save, f"f1__{args.unc_metric}_df.csv"))
+    with open(os.path.join(args.path_save, "f1_mean.txt"), 'w') as f:
+        f.write(metric_df['f1_lesion'].mean())
 
 # %%
 if __name__ == "__main__":

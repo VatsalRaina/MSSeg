@@ -1,15 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn import metrics
 from joblib import Parallel, delayed
 from functools import partial
-import os
 from scipy import ndimage
 from scipy.interpolate import interp1d
-from visualise import plot_retention_curve_single
-
-from ..Uncertainty import lesions_uncertainty_sum
-from transforms import get_FN_lesions_mask, get_TP_lesions_mask
 
 
 
@@ -185,6 +179,8 @@ def get_dsc_norm_auc(gts, preds, uncs, n_jobs=None, plot=True, save_path=None):
         pos = int(N_ * frac_)
         curr_preds = preds if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
         return dice_norm_metric(gts_, curr_preds)[0]
+    
+    from .visualise import plot_retention_curve_single
 
     ordering = uncs.argsort()
     gts = gts[ordering]
@@ -261,7 +257,7 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
     def retain_one_lesion(lesion_, pred, gt, IoU_threshold_):
         in_pred = True if np.sum(lesion_ * pred) == np.sum(lesion_) else False  # lesion is in prediction map
         in_gt = True if np.sum(lesion_ * gt) == np.sum(lesion_) else False  # lesion is in gt
-        in_both = in_pred * in_gt  # fast track for perfect prediction
+        in_both = bool(in_pred * in_gt)  # fast track for perfect prediction
 
         if in_both:
             pred -= lesion_
@@ -280,14 +276,18 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
             max_iou = 0.0
             max_label = None
             for int_label_gt in np.unique(mask_multi_gt * lesion_):  # iterate only intersections
-                mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
-                iou = intersection_over_union(lesion_, mask_label_gt)
-                if iou > max_iou:
-                    max_iou = iou
-                    max_label = int_label_gt
+                if int_label_gt != 0:    
+                    mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
+                    iou = intersection_over_union(lesion_, mask_label_gt)
+                    if iou > max_iou:
+                        max_iou = iou
+                        max_label = int_label_gt
             if max_iou >= IoU_threshold_:
                 gt -= (mask_multi_gt == max_label).astype(int)
         return pred, gt
+    
+    from .uncertainty import lesions_uncertainty_sum
+    from .transforms import get_FN_lesions_mask
 
     # compute masks and uncertainties
     fn_lesions = get_FN_lesions_mask(ground_truth=gts,
