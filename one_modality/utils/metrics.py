@@ -6,7 +6,6 @@ from scipy import ndimage
 from scipy.interpolate import interp1d
 
 
-
 def dice_metric(ground_truth, predictions):
     """
     Returns Dice coefficient for a single example.
@@ -179,7 +178,7 @@ def get_dsc_norm_auc(gts, preds, uncs, n_jobs=None, plot=True, save_path=None):
         pos = int(N_ * frac_)
         curr_preds = preds if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
         return dice_norm_metric(gts_, curr_preds)[0]
-    
+
     from .visualise import plot_retention_curve_single
 
     ordering = uncs.argsort()
@@ -258,7 +257,7 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
         n_vox_l = int(np.sum(lesion_))
         n_vox_p = int(np.sum(lesion_ * pred))
         n_vox_g = int(np.sum(lesion_ * gt))
-        
+
         in_pred = True if n_vox_l in [n_vox_p - 1, n_vox_p, n_vox_p + 1] else False  # lesion is in prediction map
         in_gt = True if n_vox_l in [n_vox_g - 1, n_vox_g, n_vox_g + 1] else False  # lesion is in gt
         in_both = bool(in_pred * in_gt)  # fast track for perfect prediction
@@ -280,7 +279,7 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
             max_iou = 0.0
             max_label = None
             for int_label_gt in np.unique(mask_multi_gt * lesion_):  # iterate only intersections
-                if int_label_gt != 0:    
+                if int_label_gt != 0:
                     mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
                     iou = intersection_over_union(lesion_, mask_label_gt)
                     if iou > max_iou:
@@ -289,7 +288,7 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
             if max_iou >= IoU_threshold_:
                 gt -= (mask_multi_gt == max_label).astype(int)
         return pred, gt
-    
+
     from .uncertainty import lesions_uncertainty_sum
     from .transforms import get_FN_lesions_mask
 
@@ -301,16 +300,19 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
 
     cc_uncs_fn, cc_mask_fn = lesions_uncertainty_sum(uncs_mask=uncs,
                                                      binary_mask=fn_lesions,
-                                                     one_hot=True)
-    cc_mask_fn = cc_mask_fn.astype("int")
+                                                     dtype=int,
+                                                     mask_type='one_hot')
+    # cc_mask_fn = cc_mask_fn.astype("int")
 
     cc_uncs_pred, cc_mask_pred = lesions_uncertainty_sum(uncs_mask=uncs,
                                                          binary_mask=preds,
-                                                         one_hot=True)
-    cc_mask_pred = cc_mask_pred.astype("int")
+                                                         dtype=int,
+                                                         mask_type='one_hot')
+    # cc_mask_pred = cc_mask_pred.astype("int")
 
-    uncs_all = np.concatenate([cc_uncs_pred, cc_uncs_fn], axis=0)       # lesions uncertainties
-    cc_mask_all = np.concatenate([cc_mask_pred, cc_mask_fn], axis=0)    # one hot encoded lesions masks [n_lesions, H, W, D]
+    uncs_all = np.concatenate([cc_uncs_pred, cc_uncs_fn], axis=0)  # lesions uncertainties
+    cc_mask_all = np.concatenate([cc_mask_pred, cc_mask_fn],
+                                 axis=0)  # one hot encoded lesions masks [n_lesions, H, W, D]
 
     # sort uncertainties and lesions
     ordering = uncs_all.argsort()
@@ -320,12 +322,12 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
     gts_ = gts.copy().astype("int")
 
     f1_values = []
-    for i_l, lesion in enumerate(cc_mask_all[::-1]):        # exclude the most uncertain lesion
+    for i_l, lesion in enumerate(cc_mask_all[::-1]):  # exclude the most uncertain lesion
         preds_, gts_ = retain_one_lesion(lesion_=lesion, pred=preds_, gt=gts_, IoU_threshold_=IoU_threshold)
         f1_values.append(f1_lesion_metric(ground_truth=gts_, predictions=preds_, IoU_threshold=IoU_threshold))
 
     # interpolate the curve and make predictions in the retention fraction nodes
     n_lesions = cc_mask_all.shape[0]
-    spline3_interpolator = interp1d(x=[_/n_lesions for _ in range(n_lesions)], y=f1_values,
+    spline3_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions)], y=f1_values,
                                     kind='cubic', fill_value="extrapolate")
     return spline3_interpolator(fracs_retained)

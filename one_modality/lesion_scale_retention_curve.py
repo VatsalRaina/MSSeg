@@ -120,6 +120,8 @@ def main(args):
             outputs_mean[outputs_mean < args.threshold] = 0
             seg = np.squeeze(outputs_mean)      # [H, W, D]
             seg = remove_connected_components(segmentation=seg, l_min=9)
+            seg[seg >= 0.35] = 1.
+            seg[seg < 0.35] = 0.
 
             val_labels = gt.cpu().numpy()   # [1, 1, H, W, D]
             gt = np.squeeze(val_labels)     # [H, W, D]
@@ -129,7 +131,6 @@ def main(args):
                 np.concatenate((np.expand_dims(all_outputs, axis=-1),
                                 np.expand_dims(1. - all_outputs, axis=-1)),
                                axis=-1))[args.unc_metric]   # [H, W, D]
-            
 
             metric_rf = get_metric_for_rc_lesion(gts=gt,
                                                  preds=seg,
@@ -138,7 +139,7 @@ def main(args):
                                                  IoU_threshold=args.IoU_threshold)
             metric_rf_df = metric_rf_df.append(pd.DataFrame(metric_rf, columns=fracs_ret), ignore_index=True)
 
-    os.makedirs(args.path_save, exists_ok=True)
+    os.makedirs(args.path_save, exist_ok=True)
     metric_rf_df.to_csv(os.path.join(args.path_save, f"RC_{args.perf_metric}_{args.unc_metric}_df.csv"))
     plot_iqr_median_rc(metric_rf_df, fracs_ret,
                        os.path.join(args.path_save, f"RC_{args.perf_metric}_{args.unc_metric}_df.png"))

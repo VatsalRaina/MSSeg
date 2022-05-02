@@ -4,7 +4,7 @@ from .metrics import intersection_over_union
 
 
 class OneHotEncoding:
-    def __call__(self, multi_mask, *args, **kwargs):
+    def __call__(self, multi_mask, dtype="float32", *args, **kwargs):
         """
         Parameters:
             * multi_mask (numpy.ndarray) of shape [H, W, D]
@@ -17,7 +17,7 @@ class OneHotEncoding:
         Note: zero-label is inclluded
         """
         return np.stack([
-            (multi_mask == label).astype("float32") for label in np.unique(multi_mask) if label != 0.0
+            (multi_mask == label).astype(dtype) for label in np.unique(multi_mask) if label != 0.0
         ], axis=0)
 
 
