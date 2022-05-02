@@ -81,6 +81,7 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='
     for cc_label in np.unique(multi_mask):
         if cc_label != 0.0:                         # exclude background
             cc_mask = (multi_mask == cc_label).astype(dtype)
+            #if np.sum(cc_mask) > n_min_vox:
             cc_unc = np.sum(uncs_mask * cc_mask) / np.sum(cc_mask)
             uncs_list.append(cc_unc)
             lesions.append(cc_mask)

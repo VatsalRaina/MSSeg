@@ -88,7 +88,7 @@ def main(args):
         raise ValueError(f"invalid number of num_models {args.num_models}")
 
     # %%
-    print("Computing DSC_norm AAC")
+    print("Staring evaluation")
     num_patients = 0
     fracs_ret = np.log(np.arange(200 + 1)[1:])
     fracs_ret /= np.amax(fracs_ret)
@@ -120,11 +120,12 @@ def main(args):
             outputs_mean[outputs_mean < args.threshold] = 0
             seg = np.squeeze(outputs_mean)      # [H, W, D]
             seg = remove_connected_components(segmentation=seg, l_min=9)
-            seg[seg >= 0.35] = 1.
-            seg[seg < 0.35] = 0.
+            seg[seg >= args.threshold] = 1.
+            seg[seg < args.threshold] = 0.
 
             val_labels = gt.cpu().numpy()   # [1, 1, H, W, D]
             gt = np.squeeze(val_labels)     # [H, W, D]
+            #gt = remove_connected_components(segmentation=gt, l_min=9)
 
             # Get all uncertainties
             uncs_value = ensemble_uncertainties_classification(
@@ -137,13 +138,17 @@ def main(args):
                                                  uncs=uncs_value,
                                                  fracs_retained=fracs_ret,
                                                  IoU_threshold=args.IoU_threshold)
-            metric_rf_df = metric_rf_df.append(pd.DataFrame(metric_rf, columns=fracs_ret), ignore_index=True)
+            metric_rf_df = metric_rf_df.append(pd.DataFrame(metric_rf, columns=fracs_ret, index=[0]), 
+                                               ignore_index=True)
+            
+            if num_patients % 10 == 0:
+                print(f"Processed {num_patients} scans")
 
     os.makedirs(args.path_save, exist_ok=True)
     metric_rf_df.to_csv(os.path.join(args.path_save, f"RC_{args.perf_metric}_{args.unc_metric}_df.csv"))
     plot_iqr_median_rc(metric_rf_df, fracs_ret,
                        os.path.join(args.path_save, f"RC_{args.perf_metric}_{args.unc_metric}_df.png"))
-
+    print(f"Saved f1 scores and retention curve to folder {args.path_save}")
 
 # %%
 if __name__ == "__main__":
