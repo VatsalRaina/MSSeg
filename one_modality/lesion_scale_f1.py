@@ -148,7 +148,7 @@ def main(args):
                              columns=['scan', 'f1_lesion'])
     metric_df.to_csv(os.path.join(args.path_save, f"f1__{args.unc_metric}_df.csv"))
     with open(os.path.join(args.path_save, "f1_mean.txt"), 'w') as f:
-        f.write(metric_df['f1_lesion'].mean())
+        f.write(f'{metric_df["f1_lesion"].mean()}')
 
 # %%
 if __name__ == "__main__":

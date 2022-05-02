@@ -255,8 +255,12 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
     """
 
     def retain_one_lesion(lesion_, pred, gt, IoU_threshold_):
-        in_pred = True if np.sum(lesion_ * pred) == np.sum(lesion_) else False  # lesion is in prediction map
-        in_gt = True if np.sum(lesion_ * gt) == np.sum(lesion_) else False  # lesion is in gt
+        n_vox_l = int(np.sum(lesion_))
+        n_vox_p = int(np.sum(lesion_ * pred))
+        n_vox_g = int(np.sum(lesion_ * gt))
+        
+        in_pred = True if n_vox_l in [n_vox_p - 1, n_vox_p, n_vox_p + 1] else False  # lesion is in prediction map
+        in_gt = True if n_vox_l in [n_vox_g - 1, n_vox_g, n_vox_g + 1] else False  # lesion is in gt
         in_both = bool(in_pred * in_gt)  # fast track for perfect prediction
 
         if in_both:
@@ -268,7 +272,7 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
         elif in_gt:
             gt -= lesion_  # remove if it is fn
         else:
-            raise NotImplementedError("Lesion not found")
+            raise NotImplementedError(f"Lesion not found. n_vox_l {n_vox_l}, n_vox_p {n_vox_p}, n_vox_g {n_vox_g}")
 
         # for tp also remove from gt corresponding lesion
         if in_pred:
