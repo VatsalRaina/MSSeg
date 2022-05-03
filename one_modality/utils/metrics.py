@@ -393,7 +393,7 @@ def get_metric_for_rc_lesion_old(gts, preds, uncs, IoU_threshold, fracs_retained
     return spline3_interpolator(fracs_retained)
 
 
-def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
+def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_jobs):
     """
     algorithm:
     0. obtain fn_lesions and tp_lesions from gt
@@ -442,25 +442,25 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
 
     # compute masks and uncertainties
     fn_lesions = get_FN_lesions_mask(ground_truth=gts,
-                                     predictions=preds,
-                                     IoU_threshold=IoU_threshold,
-                                     mask_type='binary')
+                                      predictions=preds,
+                                      IoU_threshold=IoU_threshold,
+                                      mask_type='binary')
 
     cc_uncs_fn, cc_mask_fn = lesions_uncertainty_sum(uncs_mask=uncs,
-                                                     binary_mask=fn_lesions,
-                                                     dtype=int,
-                                                     mask_type='one_hot')
+                                                      binary_mask=fn_lesions,
+                                                      dtype=int,
+                                                      mask_type='one_hot')
     # cc_mask_fn = cc_mask_fn.astype("int")
 
     cc_uncs_pred, cc_mask_pred = lesions_uncertainty_sum(uncs_mask=uncs,
-                                                         binary_mask=preds,
-                                                         dtype=int,
-                                                         mask_type='one_hot')
+                                                          binary_mask=preds,
+                                                          dtype=int,
+                                                          mask_type='one_hot')
     # cc_mask_pred = cc_mask_pred.astype("int")
 
     uncs_all = np.concatenate([cc_uncs_pred, cc_uncs_fn], axis=0)  # lesions uncertainties
     cc_mask_all = np.concatenate([cc_mask_pred, cc_mask_fn],
-                                 axis=0)  # one hot encoded lesions masks [n_lesions, H, W, D]
+                                  axis=0)  # one hot encoded lesions masks [n_lesions, H, W, D]
     cc_mask_type = np.zeros_like(uncs_all, dtype='int')
     cc_mask_type[cc_mask_pred.shape[0]:] = 1
 
@@ -473,20 +473,25 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained):
     gts_ = gts.copy().astype("int")
 
     f1_values = []
-    with Parallel(n_jobs=4) as parallel:
+    
+    with Parallel(n_jobs=n_jobs) as parallel_backend:
+        f1_values = [f1_lesion_metric_parallel(ground_truth=gts_, 
+                                            predictions=preds_, 
+                                            IoU_threshold=IoU_threshold,
+                                            parallel_backend=parallel_backend)]
         for les, les_type in zip(cc_mask_all[::-1], cc_mask_type[::-1]):  # exclude the most uncertain lesion
             preds_, gts_ = retain_one_lesion(lesion=les, 
-                                             pred=preds_, 
-                                             gt=gts_, 
-                                             lesion_type=les_type,
-                                             IoU_threshold_=IoU_threshold)
+                                              pred=preds_, 
+                                              gt=gts_, 
+                                              lesion_type=les_type,
+                                              IoU_threshold_=IoU_threshold)
             f1_values.append(f1_lesion_metric_parallel(ground_truth=gts_, 
-                                                       predictions=preds_, 
-                                                       IoU_threshold=IoU_threshold,
-                                                       parallel_backend=parallel))
+                                                        predictions=preds_, 
+                                                        IoU_threshold=IoU_threshold,
+                                                        parallel_backend=parallel_backend))
 
     # interpolate the curve and make predictions in the retention fraction nodes
     n_lesions = cc_mask_all.shape[0]
-    spline3_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions)], y=f1_values,
-                                    kind='cubic', fill_value="extrapolate")
-    return spline3_interpolator(fracs_retained)
+    spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions+1)], y=f1_values,
+                                    kind='slinear', fill_value="extrapolate")
+    return spline_interpolator(fracs_retained)

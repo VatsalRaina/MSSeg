@@ -26,6 +26,7 @@ from monai.transforms import (
     ScaleIntensityRanged, Spacingd, ToTensord, ConcatItemsd, NormalizeIntensityd, RandFlipd,
     RandRotate90d, RandShiftIntensityd, RandAffined, RandSpatialCropd, AsDiscrete, Activations)
 import seaborn as sns;
+import matplotlib.pyplot as plt
 
 sns.set_theme()
 from Uncertainty import ensemble_uncertainties_classification, lesions_uncertainty_sum
@@ -33,7 +34,7 @@ import pandas as pd
 from utils.data_load import *
 from utils.setup import get_default_device
 from utils.metrics import get_metric_for_rc_lesion
-from utils.visualise import plot_iqr_median_rc
+from utils.visualise import plot_iqr_median_rc, plot_mean_rc
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.2, help='Threshold for lesion detection')
@@ -97,6 +98,7 @@ def main(args):
     #     ['real', 'ideal', 'random'],
     #     [pd.DataFrame([], columns=fracs_retained) for _ in range(3)]
     # ))
+    # with Parallel(n_jobs=args.n_jobs) as parallel:
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
             # Get models predictions
@@ -137,17 +139,25 @@ def main(args):
                                                  preds=seg,
                                                  uncs=uncs_value,
                                                  fracs_retained=fracs_ret,
-                                                 IoU_threshold=args.IoU_threshold)
-            metric_rf_df = metric_rf_df.append(pd.DataFrame(metric_rf, columns=fracs_ret, index=[0]), 
-                                               ignore_index=True)
+                                                 IoU_threshold=args.IoU_threshold,
+                                                 n_jobs=args.n_jobs)
+            row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
+                                  columns=fracs_ret, index=[0])
+            metric_rf_df = metric_rf_df.append(row_df, ignore_index=True)
             
             if num_patients % 10 == 0:
                 print(f"Processed {num_patients} scans")
 
     os.makedirs(args.path_save, exist_ok=True)
-    metric_rf_df.to_csv(os.path.join(args.path_save, f"RC_{args.perf_metric}_{args.unc_metric}_df.csv"))
+    thresh_str = "%.3d" % (args.IoU_threshold * 100)
+    metric_rf_df.to_csv(os.path.join(args.path_save, f"RC_f1{thresh_str}_{args.unc_metric}_df.csv"))
     plot_iqr_median_rc(metric_rf_df, fracs_ret,
-                       os.path.join(args.path_save, f"RC_{args.perf_metric}_{args.unc_metric}_df.png"))
+                       os.path.join(args.path_save, f"IQR_RC_f1{thresh_str}_{args.unc_metric}_df.png"))
+    plot_mean_rc(metric_rf_df, fracs_ret,
+                       os.path.join(args.path_save, f"mean_RC_f1{thresh_str}_{args.unc_metric}_df.png"))
+    for i, row in metric_rf_df.iterrows():
+        plt.plot(fracs_ret, row)
+    plt.savefig(os.path.join(args.path_save, f"subject_RC_f1{thresh_str}_{args.unc_metric}_df.png"))
     print(f"Saved f1 scores and retention curve to folder {args.path_save}")
 
 # %%

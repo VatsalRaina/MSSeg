@@ -32,7 +32,7 @@ from Uncertainty import ensemble_uncertainties_classification, lesions_uncertain
 import pandas as pd
 from utils.data_load import *
 from utils.setup import get_default_device
-from utils.metrics import f1_lesion_metric
+from utils.metrics import f1_lesion_metric_parallel
 from utils.visualise import plot_iqr_median_rc
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
@@ -127,12 +127,14 @@ def main(args):
             #                     np.expand_dims(1. - all_outputs, axis=-1)),
             #                    axis=-1))[args.unc_metric]   # [H, W, D]
             
-
-            f1_lesion = f1_lesion_metric(ground_truth=gt, 
-                                         predictions=seg, 
-                                         IoU_threshold=args.IoU_threshold)
             
-            f1_list.append(f1_lesion)
+            with Parallel(n_jobs=args.n_jobs) as parallel:
+                f1_lesion = f1_lesion_metric_parallel(ground_truth=gt, 
+                                             predictions=seg, 
+                                             IoU_threshold=args.IoU_threshold,
+                                             parallel_backend=parallel)
+                
+                f1_list.append(f1_lesion)
             
             meta_data = batch_data['image_meta_dict']
             for i, data in enumerate(outputs_o):  
@@ -146,7 +148,7 @@ def main(args):
     
     metric_df = pd.DataFrame({"scan": subject_names, "f1_lesion": f1_list}, 
                              columns=['scan', 'f1_lesion'])
-    metric_df.to_csv(os.path.join(args.path_save, f"f1__{args.unc_metric}_df.csv"))
+    metric_df.to_csv(os.path.join(args.path_save, f"f1_subjects_df.csv"))
     with open(os.path.join(args.path_save, "f1_mean.txt"), 'w') as f:
         f.write(f'{metric_df["f1_lesion"].mean()}')
 

@@ -76,3 +76,15 @@ def plot_iqr_median_rc(metric_norm, fracs_ret, save_path):
     plt.legend()
     plt.savefig(save_path)
     plt.clf()
+    
+def plot_mean_rc(metric_norm, fracs_ret, save_path):
+    """
+    Given the data frame with col: fracs_ret and index - scan plot the IQR, median retention curve
+    """
+    mean = metric_norm.mean()
+    plt.plot(fracs_ret, mean, '-k')
+
+    plt.xlim([0, 1.01])
+    plt.legend()
+    plt.savefig(save_path)
+    plt.clf()
