@@ -27,6 +27,7 @@ from monai.transforms import (
     RandRotate90d, RandShiftIntensityd, RandAffined, RandSpatialCropd, AsDiscrete, Activations)
 import seaborn as sns;
 import matplotlib.pyplot as plt
+from sklearn import metrics
 
 sns.set_theme()
 from Uncertainty import ensemble_uncertainties_classification, lesions_uncertainty_sum
@@ -148,8 +149,12 @@ def main(args):
             if num_patients % 10 == 0:
                 print(f"Processed {num_patients} scans")
 
+    mean_aac = 1. - metrics.auc(fracs_ret, np.asarray(metric_rf_df.mean()))
+    
     os.makedirs(args.path_save, exist_ok=True)
     thresh_str = "%.3d" % (args.IoU_threshold * 100)
+    with open(os.path.join(args.path_save, f"f1{thresh_str}-AAC_{args.unc_metric}.csv"), 'w') as f:
+        f.write(f"mean AAC:\t{mean_aac}")
     metric_rf_df.to_csv(os.path.join(args.path_save, f"RC_f1{thresh_str}_{args.unc_metric}_df.csv"))
     plot_iqr_median_rc(metric_rf_df, fracs_ret,
                        os.path.join(args.path_save, f"IQR_RC_f1{thresh_str}_{args.unc_metric}_df.png"))

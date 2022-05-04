@@ -24,21 +24,23 @@ class OneHotEncoding:
 
 
 def mask_encoding(lesion_masks_list, dtype="float32", mask_type='binary'):
-    if mask_type == 'one_hot':
-        return np.stack(lesion_masks_list, axis=0)
-    elif mask_type == 'multi':
-        out_mask = np.zeros_like(lesion_masks_list[0])
-        for i_fn, fn_lesion in enumerate(lesion_masks_list):
-            out_mask += (fn_lesion.astype(dtype) * (i_fn + 1))
-        return out_mask
-    elif mask_type == 'binary':
-        out_mask = np.zeros_like(lesion_masks_list[0])
-        for i_fn, fn_lesion in enumerate(lesion_masks_list):
-            out_mask += fn_lesion.astype(dtype)
-        return out_mask
+    if lesion_masks_list:
+        if mask_type == 'one_hot':
+            return np.stack(lesion_masks_list, axis=0)
+        elif mask_type == 'multi':
+            out_mask = np.zeros_like(lesion_masks_list[0])
+            for i_fn, fn_lesion in enumerate(lesion_masks_list):
+                out_mask += (fn_lesion.astype(dtype) * (i_fn + 1))
+            return out_mask
+        elif mask_type == 'binary':
+            out_mask = np.zeros_like(lesion_masks_list[0])
+            for i_fn, fn_lesion in enumerate(lesion_masks_list):
+                out_mask += fn_lesion.astype(dtype)
+            return out_mask
+        else:
+            return [lesion.astype(dtype) for lesion in lesion_masks_list]
     else:
-        return [lesion.astype(dtype) for lesion in lesion_masks_list]
-
+        return []
 
 def get_FN_lesions_mask(ground_truth, predictions, IoU_threshold, mask_type='binary'):
     fn_lesions = []
