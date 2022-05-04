@@ -130,6 +130,8 @@ def main(args):
 
     # compute the average
     dsc_norm_value /= num_patients
+    
+    os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
 
     with open(args.output_file, 'w') as f:
         f.write(f"mean_dsc_norm\t{dsc_norm_value}")
