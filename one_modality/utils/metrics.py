@@ -94,13 +94,15 @@ def f1_lesion_metric(ground_truth, predictions, IoU_threshold):
     for label_pred in np.unique(mask_multi_pred):
         if label_pred != 0.0:
             mask_label_pred = (mask_multi_pred == label_pred).astype(int)
-            #if np.sum(mask_label_pred) > n_min_vox:
+            # if np.sum(mask_label_pred) > n_min_vox:
             all_iou = [0.0]
             # find maximum non-zero IoU of the connected component in the prediction with the gt
-            for int_label_gt in np.unique(mask_multi_gt * mask_label_pred):  # iterate only intersections
+            # iterate only intersections
+            for int_label_gt in np.unique(mask_multi_gt * mask_label_pred):
                 if int_label_gt != 0.0:
                     mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
-                    all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
+                    all_iou.append(intersection_over_union(
+                        mask_label_pred, mask_label_gt))
             max_iou = max(all_iou)
             if max_iou >= IoU_threshold:
                 tp += 1
@@ -115,10 +117,13 @@ def f1_lesion_metric(ground_truth, predictions, IoU_threshold):
             all_iou = [0]
             for int_label_pred in np.unique(mask_multi_pred * mask_label_gt):
                 if int_label_pred != 0.0:
-                    mask_label_pred = (mask_multi_pred == int_label_pred).astype(int)
-                    all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
+                    mask_label_pred = (mask_multi_pred ==
+                                       int_label_pred).astype(int)
+                    all_iou.append(intersection_over_union(
+                        mask_label_pred, mask_label_gt))
             max_iou = max(all_iou)
-            if max_iou < IoU_threshold: fn += 1
+            if max_iou < IoU_threshold:
+                fn += 1
 
     if tp + 0.5 * (fp + fn) == 0.0:
         return 0
@@ -137,47 +142,52 @@ def f1_lesion_metric_parallel(ground_truth, predictions, IoU_threshold, parallel
     def get_tp_fp(label_pred, mask_multi_pred, mask_multi_gt):
         mask_label_pred = (mask_multi_pred == label_pred).astype(int)
         all_iou = [0.0]
-        for int_label_gt in np.unique(mask_multi_gt * mask_label_pred):  # iterate only intersections
+        # iterate only intersections
+        for int_label_gt in np.unique(mask_multi_gt * mask_label_pred):
             if int_label_gt != 0.0:
                 mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
-                all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
+                all_iou.append(intersection_over_union(
+                    mask_label_pred, mask_label_gt))
         max_iou = max(all_iou)
         if max_iou >= IoU_threshold:
             return 'tp'
         else:
             return 'fp'
+
     def get_fn(label_gt, mask_multi_pred, mask_multi_gt):
         mask_label_gt = (mask_multi_gt == label_gt).astype(int)
         all_iou = [0]
         for int_label_pred in np.unique(mask_multi_pred * mask_label_gt):
             if int_label_pred != 0.0:
-                mask_label_pred = (mask_multi_pred == int_label_pred).astype(int)
-                all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
+                mask_label_pred = (mask_multi_pred ==
+                                   int_label_pred).astype(int)
+                all_iou.append(intersection_over_union(
+                    mask_label_pred, mask_label_gt))
         max_iou = max(all_iou)
-        if max_iou < IoU_threshold: 
+        if max_iou < IoU_threshold:
             return 1
         else:
             return 0
-        
+
     mask_multi_pred_ = ndimage.label(predictions)[0]
-    mask_multi_gt_=ndimage.label(ground_truth)[0]
-    
-    process_fp_tp = partial(get_tp_fp, mask_multi_pred=mask_multi_pred_, 
+    mask_multi_gt_ = ndimage.label(ground_truth)[0]
+
+    process_fp_tp = partial(get_tp_fp, mask_multi_pred=mask_multi_pred_,
                             mask_multi_gt=mask_multi_gt_)
-    
-    tp_fp = parallel_backend(delayed(process_fp_tp)(label_pred) 
-                             for label_pred in np.unique(mask_multi_pred_) if label_pred !=0)
+
+    tp_fp = parallel_backend(delayed(process_fp_tp)(label_pred)
+                             for label_pred in np.unique(mask_multi_pred_) if label_pred != 0)
     counter = Counter(tp_fp)
     tp = float(counter['tp'])
     fp = float(counter['fp'])
-    
-    process_fn = partial(get_fn, mask_multi_pred=mask_multi_pred_, 
-                            mask_multi_gt=mask_multi_gt_)
-    
-    fn = parallel_backend(delayed(process_fn)(label_gt) 
+
+    process_fn = partial(get_fn, mask_multi_pred=mask_multi_pred_,
+                         mask_multi_gt=mask_multi_gt_)
+
+    fn = parallel_backend(delayed(process_fn)(label_gt)
                           for label_gt in np.unique(mask_multi_gt_) if label_gt != 0)
     fn = float(np.sum(fn))
-    
+
     if tp + 0.5 * (fp + fn) == 0.0:
         return 0
     return tp / (tp + 0.5 * (fp + fn))
@@ -185,7 +195,7 @@ def f1_lesion_metric_parallel(ground_truth, predictions, IoU_threshold, parallel
 
 def get_dsc_norm(gts, preds, uncs, n_jobs=None):
     """ Get DSC_norm-AUC
-    
+
     Parameters:
         - gts (1D numpy.ndarray) - ground truth
         - preds (1D numpy.ndarray) - predicted labels
@@ -199,7 +209,8 @@ def get_dsc_norm(gts, preds, uncs, n_jobs=None):
 
     def compute_dice_norm(frac_, preds_, gts_, N_):
         pos = int(N_ * frac_)
-        curr_preds = preds if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
+        curr_preds = preds if pos == N_ else np.concatenate(
+            (preds_[:pos], gts_[pos:]))
         return dice_norm_metric(gts_, curr_preds)[0]
 
     ordering = uncs.argsort()
@@ -214,7 +225,8 @@ def get_dsc_norm(gts, preds, uncs, n_jobs=None):
 
     process = partial(compute_dice_norm, preds_=preds, gts_=gts, N_=N)
     dsc_norm_scores = np.asarray(
-        Parallel(n_jobs=n_jobs)(delayed(process)(frac) for frac in fracs_retained)
+        Parallel(n_jobs=n_jobs)(delayed(process)(frac)
+                                for frac in fracs_retained)
     )
 
     return dsc_norm_scores
@@ -222,7 +234,7 @@ def get_dsc_norm(gts, preds, uncs, n_jobs=None):
 
 def get_dsc_norm_auc(gts, preds, uncs, n_jobs=None, plot=True, save_path=None):
     """ Get DSC_norm-AUC
-    
+
     Parameters:
         - gts (1D numpy.ndarray) - ground truth
         - preds (1D numpy.ndarray) - predicted labels
@@ -236,7 +248,8 @@ def get_dsc_norm_auc(gts, preds, uncs, n_jobs=None, plot=True, save_path=None):
 
     def compute_dice_norm(frac_, preds_, gts_, N_):
         pos = int(N_ * frac_)
-        curr_preds = preds if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
+        curr_preds = preds if pos == N_ else np.concatenate(
+            (preds_[:pos], gts_[pos:]))
         return dice_norm_metric(gts_, curr_preds)[0]
 
     from .visualise import plot_retention_curve_single
@@ -253,11 +266,13 @@ def get_dsc_norm_auc(gts, preds, uncs, n_jobs=None, plot=True, save_path=None):
 
     process = partial(compute_dice_norm, preds_=preds, gts_=gts, N_=N)
     dsc_norm_scores = np.asarray(
-        Parallel(n_jobs=n_jobs)(delayed(process)(frac) for frac in fracs_retained)
+        Parallel(n_jobs=n_jobs)(delayed(process)(frac)
+                                for frac in fracs_retained)
     )
 
     if plot:
-        plot_retention_curve_single(gts, preds, dsc_norm_scores, fracs_retained, n_jobs=n_jobs, save_path=save_path)
+        plot_retention_curve_single(
+            gts, preds, dsc_norm_scores, fracs_retained, n_jobs=n_jobs, save_path=save_path)
 
     return metrics.auc(fracs_retained, dsc_norm_scores)
 
@@ -265,12 +280,14 @@ def get_dsc_norm_auc(gts, preds, uncs, n_jobs=None, plot=True, save_path=None):
 def get_metric_for_rc(gts, preds, uncs, metric_name, fracs_retained, n_jobs=None):
     def compute_dice_norm(frac_, preds_, gts_, N_, ind_ret):
         pos = int(N_ * frac_)
-        curr_preds = preds_ if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
+        curr_preds = preds_ if pos == N_ else np.concatenate(
+            (preds_[:pos], gts_[pos:]))
         return dice_norm_metric(gts_, curr_preds)[ind_ret]
 
     def compute_dice(frac_, preds_, gts_, N_):
         pos = int(N_ * frac_)
-        curr_preds = preds_ if pos == N_ else np.concatenate((preds_[:pos], gts_[pos:]))
+        curr_preds = preds_ if pos == N_ else np.concatenate(
+            (preds_[:pos], gts_[pos:]))
         return dice_metric(gts_, curr_preds)
 
     ordering = uncs.argsort()
@@ -279,11 +296,14 @@ def get_metric_for_rc(gts, preds, uncs, metric_name, fracs_retained, n_jobs=None
     N = len(gts)
 
     if metric_name == 'dsc_norm':
-        process = partial(compute_dice_norm, preds_=preds, gts_=gts, N_=N, ind_ret=0)
+        process = partial(compute_dice_norm, preds_=preds,
+                          gts_=gts, N_=N, ind_ret=0)
     elif metric_name == 'fpr':
-        process = partial(compute_dice_norm, preds_=preds, gts_=gts, N_=N, ind_ret=1)
+        process = partial(compute_dice_norm, preds_=preds,
+                          gts_=gts, N_=N, ind_ret=1)
     elif metric_name == 'fnr':
-        process = partial(compute_dice_norm, preds_=preds, gts_=gts, N_=N, ind_ret=2)
+        process = partial(compute_dice_norm, preds_=preds,
+                          gts_=gts, N_=N, ind_ret=2)
     elif metric_name == 'dice':
         process = partial(compute_dice, preds_=preds, gts_=gts, N_=N)
     else:
@@ -331,14 +351,16 @@ def get_metric_for_rc_lesion_old(gts, preds, uncs, IoU_threshold, fracs_retained
         elif in_gt:
             gt -= lesion_  # remove if it is fn
         else:
-            raise NotImplementedError(f"Lesion not found. n_vox_l {n_vox_l}, n_vox_p {n_vox_p}, n_vox_g {n_vox_g}")
+            raise NotImplementedError(
+                f"Lesion not found. n_vox_l {n_vox_l}, n_vox_p {n_vox_p}, n_vox_g {n_vox_g}")
 
         # for tp also remove from gt corresponding lesion
         if in_pred and n_vox_g > 0:
             mask_multi_gt = ndimage.label(gt)[0]
             max_iou = 0.0
             max_label = None
-            for int_label_gt in np.unique(mask_multi_gt * lesion_):  # iterate only intersections
+            # iterate only intersections
+            for int_label_gt in np.unique(mask_multi_gt * lesion_):
                 if int_label_gt != 0:
                     mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
                     iou = intersection_over_union(lesion_, mask_label_gt)
@@ -370,7 +392,8 @@ def get_metric_for_rc_lesion_old(gts, preds, uncs, IoU_threshold, fracs_retained
                                                          mask_type='one_hot')
     # cc_mask_pred = cc_mask_pred.astype("int")
 
-    uncs_all = np.concatenate([cc_uncs_pred, cc_uncs_fn], axis=0)  # lesions uncertainties
+    # lesions uncertainties
+    uncs_all = np.concatenate([cc_uncs_pred, cc_uncs_fn], axis=0)
     cc_mask_all = np.concatenate([cc_mask_pred, cc_mask_fn],
                                  axis=0)  # one hot encoded lesions masks [n_lesions, H, W, D]
 
@@ -382,9 +405,12 @@ def get_metric_for_rc_lesion_old(gts, preds, uncs, IoU_threshold, fracs_retained
     gts_ = gts.copy().astype("int")
 
     f1_values = []
-    for i_l, lesion in enumerate(cc_mask_all[::-1]):  # exclude the most uncertain lesion
-        preds_, gts_ = retain_one_lesion(lesion_=lesion, pred=preds_, gt=gts_, IoU_threshold_=IoU_threshold)
-        f1_values.append(f1_lesion_metric(ground_truth=gts_, predictions=preds_, IoU_threshold=IoU_threshold))
+    # exclude the most uncertain lesion
+    for i_l, lesion in enumerate(cc_mask_all[::-1]):
+        preds_, gts_ = retain_one_lesion(
+            lesion_=lesion, pred=preds_, gt=gts_, IoU_threshold_=IoU_threshold)
+        f1_values.append(f1_lesion_metric(ground_truth=gts_,
+                         predictions=preds_, IoU_threshold=IoU_threshold))
 
     # interpolate the curve and make predictions in the retention fraction nodes
     n_lesions = cc_mask_all.shape[0]
@@ -418,14 +444,15 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
         if lesion_type == 1:   # remove if it is fn
             gt -= lesion
             return pred, gt
-        
+
         pred -= lesion
-        
+
         if np.sum(lesion * gt) > 0:
             mask_multi_gt = ndimage.label(gt)[0]
             max_iou = 0.0
             max_label = None
-            for int_label_gt in np.unique(mask_multi_gt * lesion):  # iterate only intersections
+            # iterate only intersections
+            for int_label_gt in np.unique(mask_multi_gt * lesion):
                 if int_label_gt != 0:
                     mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
                     iou = intersection_over_union(lesion, mask_label_gt)
@@ -434,7 +461,7 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
                         max_label = int_label_gt
             if max_iou >= IoU_threshold_:
                 gt -= (mask_multi_gt == max_label).astype(int)
-        
+
         return pred, gt
 
     from .uncertainty import lesions_uncertainty_sum
@@ -442,27 +469,35 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
 
     # compute masks and uncertainties
     fn_lesions = get_FN_lesions_mask(ground_truth=gts,
-                                      predictions=preds,
-                                      IoU_threshold=IoU_threshold,
-                                      mask_type='binary')
+                                     predictions=preds,
+                                     IoU_threshold=IoU_threshold,
+                                     mask_type='binary')
 
     cc_uncs_fn, cc_mask_fn = lesions_uncertainty_sum(uncs_mask=uncs,
-                                                      binary_mask=fn_lesions,
-                                                      dtype=int,
-                                                      mask_type='one_hot')
-    # cc_mask_fn = cc_mask_fn.astype("int")
+                                                     binary_mask=fn_lesions,
+                                                     dtype=int,
+                                                     mask_type='one_hot')
 
     cc_uncs_pred, cc_mask_pred = lesions_uncertainty_sum(uncs_mask=uncs,
-                                                          binary_mask=preds,
-                                                          dtype=int,
-                                                          mask_type='one_hot')
-    # cc_mask_pred = cc_mask_pred.astype("int")
+                                                         binary_mask=preds,
+                                                         dtype=int,
+                                                         mask_type='one_hot')
 
-    uncs_all = np.concatenate([cc_uncs_pred, cc_uncs_fn], axis=0)  # lesions uncertainties
-    cc_mask_all = np.concatenate([cc_mask_pred, cc_mask_fn],
-                                  axis=0)  # one hot encoded lesions masks [n_lesions, H, W, D]
-    cc_mask_type = np.zeros_like(uncs_all, dtype='int')
-    cc_mask_type[cc_mask_pred.shape[0]:] = 1
+    # there should be no case with no lesions 
+    if cc_uncs_fn.size == 0 and cc_uncs_pred.size != 0:
+        uncs_all = cc_uncs_pred
+        cc_mask_all = cc_mask_pred
+        cc_mask_type = np.zeros_like(uncs_all, dtype=int)
+    elif cc_uncs_fn.size != 0 and cc_uncs_pred.size == 0:
+        uncs_all = cc_uncs_fn
+        cc_mask_all = cc_mask_fn
+        cc_mask_type = np.ones_like(uncs_all, dtype=int)
+    else:
+        uncs_all = np.concatenate([cc_uncs_pred, cc_uncs_fn], axis=0)
+        cc_mask_all = np.concatenate([cc_mask_pred, cc_mask_fn],
+                                     axis=0)  # [n_lesions, H, W, D]
+        cc_mask_type = np.zeros_like(uncs_all, dtype='int')
+        cc_mask_type[cc_mask_pred.shape[0]:] = 1
 
     # sort uncertainties and lesions
     ordering = uncs_all.argsort()
@@ -473,25 +508,26 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
     gts_ = gts.copy().astype("int")
 
     f1_values = []
-    
+
     with Parallel(n_jobs=n_jobs) as parallel_backend:
-        f1_values = [f1_lesion_metric_parallel(ground_truth=gts_, 
-                                            predictions=preds_, 
-                                            IoU_threshold=IoU_threshold,
-                                            parallel_backend=parallel_backend)]
-        for les, les_type in zip(cc_mask_all[::-1], cc_mask_type[::-1]):  # exclude the most uncertain lesion
-            preds_, gts_ = retain_one_lesion(lesion=les, 
-                                              pred=preds_, 
-                                              gt=gts_, 
-                                              lesion_type=les_type,
-                                              IoU_threshold_=IoU_threshold)
-            f1_values.append(f1_lesion_metric_parallel(ground_truth=gts_, 
-                                                        predictions=preds_, 
-                                                        IoU_threshold=IoU_threshold,
-                                                        parallel_backend=parallel_backend))
+        f1_values = [f1_lesion_metric_parallel(ground_truth=gts_,
+                                               predictions=preds_,
+                                               IoU_threshold=IoU_threshold,
+                                               parallel_backend=parallel_backend)]
+        # exclude the most uncertain lesion
+        for les, les_type in zip(cc_mask_all[::-1], cc_mask_type[::-1]):
+            preds_, gts_ = retain_one_lesion(lesion=les,
+                                             pred=preds_,
+                                             gt=gts_,
+                                             lesion_type=les_type,
+                                             IoU_threshold_=IoU_threshold)
+            f1_values.append(f1_lesion_metric_parallel(ground_truth=gts_,
+                                                       predictions=preds_,
+                                                       IoU_threshold=IoU_threshold,
+                                                       parallel_backend=parallel_backend))
 
     # interpolate the curve and make predictions in the retention fraction nodes
     n_lesions = cc_mask_all.shape[0]
     spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions+1)], y=f1_values,
-                                    kind='slinear', fill_value="extrapolate")
+                                   kind='slinear', fill_value="extrapolate")
     return spline_interpolator(fracs_retained)
