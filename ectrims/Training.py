@@ -21,8 +21,39 @@ from monai.networks.nets import UNet
 from monai.transforms import Activations
 import numpy as np
 import random
-from .data_loader import train_transforms, val_transforms, get_data_loader
+from ectrims.data_loader import train_transforms, val_transforms, get_data_loader
 
+'''
+python Training.py \
+--learning_rate LEARNING_RATE \
+--n_epochs N_EPOCHS \
+--seed SEED \
+--threshold THRESHOLD\
+--path_flair PATH_FLAIR \
+--path_mp2rage PATH_MP2RAGE \
+--path_gts PATH_GTS \
+[--flair_prefix FLAIR_PREFIX \
+--mp2rage_prefix MP2RAGE_PREFIX\ 
+--gts_prefix GTS_PREFIX \
+--check_dataset \
+--num_workers NUM_WORKERS \
+--path_save PATH_SAVE
+
+python Training.py \
+--learning_rate LEARNING_RATE \
+--n_epochs 1 \
+--seed 1 \
+--threshold 0.4 \
+--path_flair /Users/nataliyamolchanova/Docs/phd_application/MSxplain/data/canonical/dev_in \
+--path_mp2rage /Users/nataliyamolchanova/Docs/phd_application/MSxplain/data/canonical/dev_in \
+--path_gts /Users/nataliyamolchanova/Docs/phd_application/MSxplain/data/canonical/dev_in \
+--flair_prefix FLAIR.gt.nii \
+--mp2rage_prefix FLAIR.gt.nii \
+--gts_prefix gt.nii \
+--check_dataset \
+--num_workers 0 \
+--path_save /Users/nataliyamolchanova/Docs/phd_application/MSxplain/results/tmp
+'''
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 # training
@@ -32,7 +63,7 @@ parser.add_argument('--n_epochs', type=int, default=200, help='Specify the numbe
 parser.add_argument('--seed', type=int, default=1, help='Specify the global random seed')
 parser.add_argument('--threshold', type=float, default=0.4, help='Threshold for lesion detection')
 # data
-parser.add_argument('--path_flair', type=str, default='', help='Specify the path to the flair directory')
+parser.add_argument('--path_flair', type=str, required=True, help='Specify the path to the flair directory')
 parser.add_argument('--path_mp2rage', type=str, default='', help='Specify the path to the mp2rage directory')
 parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the gts directory')
 parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='name ending FLAIR')
@@ -77,7 +108,7 @@ def main(args):
                                    gts_prefix=args.gts_prefix,
                                    transforms=train_transforms_seed,
                                    num_workers=args.num_workers,
-                                   batch_size=args.batch_size)
+                                   batch_size=1)
     val_loader = get_data_loader(path_flair=args.path_flair,
                                  path_mp2rage=args.path_mp2rage,
                                  path_gts=args.path_gts,
@@ -86,16 +117,16 @@ def main(args):
                                  gts_prefix=args.gts_prefix,
                                  transforms=val_transforms_seed,
                                  num_workers=args.num_workers,
-                                 batch_size=args.batch_size)
-    val_train_loader = get_data_loader(path_flair=args.path_flair,
-                                       path_mp2rage=args.path_mp2rage,
-                                       path_gts=args.path_gts,
-                                       flair_prefix=args.flair_prefix,
-                                       mp2rage_prefix=args.mp2rage_prefix,
-                                       gts_prefix=args.gts_prefix,
-                                       transforms=val_transforms_seed,
-                                       num_workers=args.num_workers,
-                                       batch_size=args.batch_size)
+                                 batch_size=1)
+    # val_train_loader = get_data_loader(path_flair=args.path_flair,
+    #                                    path_mp2rage=args.path_mp2rage,
+    #                                    path_gts=args.path_gts,
+    #                                    flair_prefix=args.flair_prefix,
+    #                                    mp2rage_prefix=args.mp2rage_prefix,
+    #                                    gts_prefix=args.gts_prefix,
+    #                                    transforms=val_transforms_seed,
+    #                                    num_workers=args.num_workers,
+    #                                    batch_size=1)
 
     ''' Init model '''
     model = UNet(

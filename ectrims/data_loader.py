@@ -28,7 +28,7 @@ train_transforms = Compose(
         ConcatItemsd(keys=["flair", "mp2rage"], name="image"),
         RandCropByPosNegLabeld(keys=["image", "label"] ,label_key="label" ,spatial_size=(128, 128, 128),
                                pos=4 ,neg=1 ,num_samples=32 ,image_key="image"),
-        RandSpatialCropd(keys=["image", "label"], roi_size=(96 ,96 ,96), random_center=True, random_size=False),
+        RandSpatialCropd(keys=["image", "label"], roi_size=(88, 88, 88), random_center=True, random_size=False),
         RandFlipd (keys=["image", "label"] ,prob=0.5 ,spatial_axis=(0 ,1 ,2)),
         RandRotate90d (keys=["image", "label"] ,prob=0.5 ,spatial_axes=(0 ,1)),
         RandRotate90d (keys=["image", "label"] ,prob=0.5 ,spatial_axes=(1 ,2)),
