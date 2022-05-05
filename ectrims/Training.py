@@ -117,15 +117,15 @@ def main(args):
                                  transforms=val_transforms_seed,
                                  num_workers=args.num_workers,
                                  batch_size=1)
-    # val_train_loader = get_data_loader(path_flair=args.path_flair,
-    #                                    path_mp2rage=args.path_mp2rage,
-    #                                    path_gts=args.path_gts,
-    #                                    flair_prefix=args.flair_prefix,
-    #                                    mp2rage_prefix=args.mp2rage_prefix,
-    #                                    gts_prefix=args.gts_prefix,
-    #                                    transforms=val_transforms_seed,
-    #                                    num_workers=args.num_workers,
-    #                                    batch_size=1)
+    val_train_loader = get_data_loader(path_flair=args.path_train,
+                                   path_mp2rage=args.path_train,
+                                   path_gts=args.path_train,
+                                   flair_prefix=args.flair_prefix,
+                                   mp2rage_prefix=args.mp2rage_prefix,
+                                   gts_prefix=args.gts_prefix,
+                                   transforms=val_transforms_seed,
+                                   num_workers=args.num_workers,
+                                   batch_size=1)
 
     ''' Init model '''
     model = UNet(
@@ -223,28 +223,28 @@ def main(args):
                 metric_values.append(metric)
                 metric_sum_train = 0.0
                 metric_count_train = 0
-                # for train_data in val_train_loader:
-                #     train_inputs, train_labels = (
-                #         train_data["image"].to(device),
-                #         train_data["label"].to(device),
-                #     )
-                #     roi_size = (96, 96, 96)
-                #     sw_batch_size = 4
-                #     train_outputs = sliding_window_inference(train_inputs, roi_size, sw_batch_size, model,
-                #                                              mode='gaussian')
-                #
-                #     train_labels = train_labels.cpu().numpy()
-                #     gt = np.squeeze(train_labels)
-                #     train_outputs = act(train_outputs).cpu().numpy()
-                #     seg = np.squeeze(train_outputs[0, 1])
-                #     seg[seg > thresh] = 1
-                #     seg[seg < thresh] = 0
-                #     value_train = (np.sum(seg[gt == 1]) * 2.0) / (np.sum(seg) + np.sum(gt))
-                #
-                #     metric_count_train += 1
-                #     metric_sum_train += value_train.sum().item()
-                # metric_train = metric_sum_train / metric_count_train
-                # metric_values_train.append(metric_train)
+                for train_data in val_train_loader:
+                    train_inputs, train_labels = (
+                        train_data["image"].to(device),
+                        train_data["label"].to(device),
+                    )
+                    roi_size = (96, 96, 96)
+                    sw_batch_size = 4
+                    train_outputs = sliding_window_inference(train_inputs, roi_size, sw_batch_size, model,
+                                                              mode='gaussian')
+                
+                    train_labels = train_labels.cpu().numpy()
+                    gt = np.squeeze(train_labels)
+                    train_outputs = act(train_outputs).cpu().numpy()
+                    seg = np.squeeze(train_outputs[0, 1])
+                    seg[seg > thresh] = 1
+                    seg[seg < thresh] = 0
+                    value_train = (np.sum(seg[gt == 1]) * 2.0) / (np.sum(seg) + np.sum(gt))
+                
+                    metric_count_train += 1
+                    metric_sum_train += value_train.sum().item()
+                metric_train = metric_sum_train / metric_count_train
+                metric_values_train.append(metric_train)
                 if metric > best_metric:
                     best_metric = metric
                     best_metric_epoch = epoch + 1
