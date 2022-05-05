@@ -28,7 +28,7 @@ train_transforms = Compose(
         ConcatItemsd(keys=["flair", "mp2rage"], name="image"),
         RandCropByPosNegLabeld(keys=["image", "label"] ,label_key="label" ,spatial_size=(128, 128, 128),
                                pos=4 ,neg=1 ,num_samples=32 ,image_key="image"),
-        RandSpatialCropd(keys=["image", "label"], roi_size=(88, 88, 88), random_center=True, random_size=False),
+        RandSpatialCropd(keys=["image", "label"], roi_size=(96, 96, 96), random_center=True, random_size=False),
         RandFlipd (keys=["image", "label"] ,prob=0.5 ,spatial_axis=(0 ,1 ,2)),
         RandRotate90d (keys=["image", "label"] ,prob=0.5 ,spatial_axes=(0 ,1)),
         RandRotate90d (keys=["image", "label"] ,prob=0.5 ,spatial_axes=(1 ,2)),
@@ -48,6 +48,14 @@ val_transforms = Compose(
         NormalizeIntensityd(keys=["flair", "mp2rage"], nonzero=True),
         ConcatItemsd(keys=["flair", "mp2rage"], name="image"),
         ToTensord(keys=["image", "label"]),
+    ]
+)
+val_gt_transforms = Compose(
+    [
+        LoadNiftid(keys=["label"]),
+        AddChanneld(keys=["label"]),
+        Spacingd(keys=["label"], pixdim=(1.0, 1.0, 1.0), mode=("nearest")),
+        ToTensord(keys=["label"]),
     ]
 )
 
@@ -70,7 +78,7 @@ def check_dataset(filepaths_list, prefixes):
             filepath_ref = sub_filepaths[0]
             prefix_ref = prefixes[0]
             for filepath, prefix in zip(sub_filepaths[1:], prefixes[1:]):
-                if os.path.basename(filepaths_ref)[:-len(prefix_ref)] != os.path.basename(filepath)[:-len(prefix)]:
+                if os.path.basename(filepath_ref)[:-len(prefix_ref)] != os.path.basename(filepath)[:-len(prefix)]:
                     raise ValueError(f"{filepath_ref} and {filepath} do not match")
 
 
@@ -92,4 +100,18 @@ def get_data_loader(path_flair, path_mp2rage, path_gts, flair_prefix, mp2rage_pr
     files = [{"flair": fl, "mp2rage": mp2, "label": seg} for fl, mp2, seg in zip(flair, mp2rage, segs)]
 
     val_ds = CacheDataset(data=files, transform=transforms, cache_rate=0.5, num_workers=num_workers)
+    return DataLoader(val_ds, batch_size=batch_size, num_workers=num_workers)
+
+
+def get_data_loader_gt(path_gts, gts_prefix, transforms=None, num_workers=0, batch_size=1):
+    """ Create a torch DataLoader based on the system arguments.
+    """
+    segs = sorted(glob(os.path.join(path_gts, f"*{gts_prefix}")),
+                  key=lambda i: int(re.sub('\D', '', i)))
+    
+    print(f"Initializing the dataset. Number of subjects {len(segs)}")
+
+    files = [{"label": seg} for seg in segs]
+
+    val_ds = CacheDataset(data=files, transform=transforms, cache_rate=0.3, num_workers=num_workers)
     return DataLoader(val_ds, batch_size=batch_size, num_workers=num_workers)

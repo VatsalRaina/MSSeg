@@ -21,7 +21,7 @@ from monai.networks.nets import UNet
 from monai.transforms import Activations
 import numpy as np
 import random
-from ectrims.data_loader import train_transforms, val_transforms, get_data_loader
+from data_loader import train_transforms, val_transforms, get_data_loader
 
 '''
 python Training.py \
@@ -40,7 +40,7 @@ python Training.py \
 --path_save PATH_SAVE
 
 python Training.py \
---learning_rate LEARNING_RATE \
+--learning_rate 1e-4 \
 --n_epochs 1 \
 --seed 1 \
 --threshold 0.4 \
@@ -63,9 +63,8 @@ parser.add_argument('--n_epochs', type=int, default=200, help='Specify the numbe
 parser.add_argument('--seed', type=int, default=1, help='Specify the global random seed')
 parser.add_argument('--threshold', type=float, default=0.4, help='Threshold for lesion detection')
 # data
-parser.add_argument('--path_flair', type=str, required=True, help='Specify the path to the flair directory')
-parser.add_argument('--path_mp2rage', type=str, default='', help='Specify the path to the mp2rage directory')
-parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the gts directory')
+parser.add_argument('--path_train', type=str, required=True, help='Specify the path to the train data directory')
+parser.add_argument('--path_val', type=str, default='', help='Specify the path to the val data directory')
 parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='name ending FLAIR')
 parser.add_argument('--mp2rage_prefix', type=str, default="UNIT1.nii.gz", help='name ending mp2rage')
 parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
@@ -100,18 +99,18 @@ def main(args):
     train_transforms_seed = train_transforms.set_random_state(seed=seed_val)
 
     ''' Dataloader '''
-    train_loader = get_data_loader(path_flair=args.path_flair,
-                                   path_mp2rage=args.path_mp2rage,
-                                   path_gts=args.path_gts,
+    train_loader = get_data_loader(path_flair=args.path_train,
+                                   path_mp2rage=args.path_train,
+                                   path_gts=args.path_train,
                                    flair_prefix=args.flair_prefix,
                                    mp2rage_prefix=args.mp2rage_prefix,
                                    gts_prefix=args.gts_prefix,
                                    transforms=train_transforms_seed,
                                    num_workers=args.num_workers,
                                    batch_size=1)
-    val_loader = get_data_loader(path_flair=args.path_flair,
-                                 path_mp2rage=args.path_mp2rage,
-                                 path_gts=args.path_gts,
+    val_loader = get_data_loader(path_flair=args.path_val,
+                                 path_mp2rage=args.path_val,
+                                 path_gts=args.path_val,
                                  flair_prefix=args.flair_prefix,
                                  mp2rage_prefix=args.mp2rage_prefix,
                                  gts_prefix=args.gts_prefix,
