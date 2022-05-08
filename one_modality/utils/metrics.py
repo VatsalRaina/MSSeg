@@ -488,7 +488,7 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
         f1_values = [compute_f1(lesion_type_all)]
 
         # reject the most uncertain lesion
-        for i_l, lesion_type in lesion_type_all:
+        for i_l, lesion_type in enumerate(lesion_type_all):
             if lesion_type == 'fp':
                 lesion_type_all[i_l] = 'tn'
             elif lesion_type == 'fn':
@@ -497,6 +497,6 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
 
     # interpolate the curve and make predictions in the retention fraction nodes
     n_lesions = lesion_type_all.shape[0]
-    spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions + 1)], y=f1_values,
+    spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions + 1)], y=f1_values[::-1],
                                    kind='slinear', fill_value="extrapolate")
-    return spline_interpolator(fracs_retained), f1_values
+    return spline_interpolator(fracs_retained), f1_values[::-1]
