@@ -530,4 +530,4 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
     n_lesions = cc_mask_all.shape[0]
     spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions+1)], y=f1_values,
                                    kind='slinear', fill_value="extrapolate")
-    return spline_interpolator(fracs_retained)
+    return spline_interpolator(fracs_retained), f1_values
