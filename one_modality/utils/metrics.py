@@ -139,6 +139,7 @@ def f1_lesion_metric_parallel(ground_truth, predictions, IoU_threshold, parallel
         * predictions (numpy.ndarray) - size [H, W, D]
         * IoU_threshold (float) - see description in the scientific report
     """
+
     def get_tp_fp(label_pred, mask_multi_pred, mask_multi_gt):
         mask_label_pred = (mask_multi_pred == label_pred).astype(int)
         all_iou = [0.0]
@@ -410,7 +411,7 @@ def get_metric_for_rc_lesion_old(gts, preds, uncs, IoU_threshold, fracs_retained
         preds_, gts_ = retain_one_lesion(
             lesion_=lesion, pred=preds_, gt=gts_, IoU_threshold_=IoU_threshold)
         f1_values.append(f1_lesion_metric(ground_truth=gts_,
-                         predictions=preds_, IoU_threshold=IoU_threshold))
+                                          predictions=preds_, IoU_threshold=IoU_threshold))
 
     # interpolate the curve and make predictions in the retention fraction nodes
     n_lesions = cc_mask_all.shape[0]
@@ -421,16 +422,6 @@ def get_metric_for_rc_lesion_old(gts, preds, uncs, IoU_threshold, fracs_retained
 
 def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_jobs):
     """
-    algorithm:
-    0. obtain fn_lesions and tp_lesions from gt
-    1. obtain tp, fp (form preds) and fn (from segm) lesions uncertainties and OHE masks.
-    2. sort uncertainies and in the same order OHE masks
-    3. for i_l in lesions_count:
-        - retain lesion i_l and all lesions before it:
-            if lesion is TP: remove from gt and pred
-            if lesion is FP: remove from pred
-            if lesion is FN: remove from ft
-        - compute F1 with modified gt and seg
     :type gts: numpy.ndarray [H, W, D]
     :type preds: numpy.ndarray [H, W, D]
     :type uncs: numpy.ndarray [H, W, D]
@@ -440,94 +431,72 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
     :rtype:
     """
 
-    def retain_one_lesion(lesion, pred, gt, lesion_type, IoU_threshold_):
-        if lesion_type == 1:   # remove if it is fn
-            gt -= lesion
-            return pred, gt
-
-        pred -= lesion
-
-        if np.sum(lesion * gt) > 0:
-            mask_multi_gt = ndimage.label(gt)[0]
-            max_iou = 0.0
-            max_label = None
-            # iterate only intersections
-            for int_label_gt in np.unique(mask_multi_gt * lesion):
-                if int_label_gt != 0:
-                    mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
-                    iou = intersection_over_union(lesion, mask_label_gt)
-                    if iou > max_iou:
-                        max_iou = iou
-                        max_label = int_label_gt
-            if max_iou >= IoU_threshold_:
-                gt -= (mask_multi_gt == max_label).astype(int)
-
-        return pred, gt
+    def compute_f1(lesion_types):
+        counter = Counter(lesion_types)
+        if counter['tp'] + 0.5 * (counter['fp'] + counter['fn']) == 0.0:
+            return 0
+        return counter['tp'] / (counter['tp'] + 0.5 * (counter['fp'] + counter['fn']))
 
     from .uncertainty import lesions_uncertainty_sum
-    from .transforms import get_FN_lesions_mask
+    from .transforms import get_FN_lesions_mask_parallel, get_TP_FP_lesions_mask_parallel
 
-    # compute masks and uncertainties
-    fn_lesions = get_FN_lesions_mask(ground_truth=gts,
-                                     predictions=preds,
-                                     IoU_threshold=IoU_threshold,
-                                     mask_type='binary')
-
-    cc_uncs_fn, cc_mask_fn = lesions_uncertainty_sum(uncs_mask=uncs,
-                                                     binary_mask=fn_lesions,
-                                                     dtype=int,
-                                                     mask_type='one_hot')
-
-    cc_uncs_pred, cc_mask_pred = lesions_uncertainty_sum(uncs_mask=uncs,
-                                                         binary_mask=preds,
-                                                         dtype=int,
-                                                         mask_type='one_hot')
-
-    # there should be no case with no lesions 
-    if cc_uncs_fn.size == 0 and cc_uncs_pred.size != 0:
-        uncs_all = cc_uncs_pred
-        cc_mask_all = cc_mask_pred
-        cc_mask_type = np.zeros_like(uncs_all, dtype=int)
-    elif cc_uncs_fn.size != 0 and cc_uncs_pred.size == 0:
-        uncs_all = cc_uncs_fn
-        cc_mask_all = cc_mask_fn
-        cc_mask_type = np.ones_like(uncs_all, dtype=int)
-    else:
-        uncs_all = np.concatenate([cc_uncs_pred, cc_uncs_fn], axis=0)
-        cc_mask_all = np.concatenate([cc_mask_pred, cc_mask_fn],
-                                     axis=0)  # [n_lesions, H, W, D]
-        cc_mask_type = np.zeros_like(uncs_all, dtype='int')
-        cc_mask_type[cc_mask_pred.shape[0]:] = 1
-
-    # sort uncertainties and lesions
-    ordering = uncs_all.argsort()
-    cc_mask_all = cc_mask_all[ordering]
-    cc_mask_type = cc_mask_type[ordering]
-
-    preds_ = preds.copy().astype("int")
-    gts_ = gts.copy().astype("int")
-
-    f1_values = []
+    uncs_list = [None for _ in range(3)]  # fn, tp, fp
 
     with Parallel(n_jobs=n_jobs) as parallel_backend:
-        f1_values = [f1_lesion_metric_parallel(ground_truth=gts_,
-                                               predictions=preds_,
+        # compute masks and uncertainties
+        lesions = get_FN_lesions_mask_parallel(ground_truth=gts,
+                                               predictions=preds,
                                                IoU_threshold=IoU_threshold,
-                                               parallel_backend=parallel_backend)]
-        # exclude the most uncertain lesion
-        for les, les_type in zip(cc_mask_all[::-1], cc_mask_type[::-1]):
-            preds_, gts_ = retain_one_lesion(lesion=les,
-                                             pred=preds_,
-                                             gt=gts_,
-                                             lesion_type=les_type,
-                                             IoU_threshold_=IoU_threshold)
-            f1_values.append(f1_lesion_metric_parallel(ground_truth=gts_,
-                                                       predictions=preds_,
-                                                       IoU_threshold=IoU_threshold,
-                                                       parallel_backend=parallel_backend))
+                                               mask_type='binary',
+                                               parallel_backend=parallel_backend)
+        uncs_list[0] = lesions_uncertainty_sum(uncs_mask=uncs,
+                                               binary_mask=lesions,
+                                               dtype=int,
+                                               mask_type='one_hot')[0]
+
+        lesions = get_TP_FP_lesions_mask_parallel(ground_truth=gts,
+                                                  predictions=preds,
+                                                  IoU_threshold=IoU_threshold,
+                                                  mask_type='binary',
+                                                  parallel_backend=parallel_backend)
+
+        uncs_list[1] = lesions_uncertainty_sum(uncs_mask=uncs,
+                                               binary_mask=lesions[0],
+                                               dtype=int,
+                                               mask_type='one_hot')[0]
+
+        uncs_list[2] = lesions_uncertainty_sum(uncs_mask=uncs,
+                                               binary_mask=lesions[1],
+                                               dtype=int,
+                                               mask_type='one_hot')[0]
+
+        lesion_type_list = [np.full(shape=unc.shape, fill_value=fill)
+                            for unc, fill in zip(uncs_list, ['fn', 'tp', 'fp'])
+                            if unc.size > 0]
+        uncs_list = [unc for unc in uncs_list if unc.size > 0]
+
+        uncs_all = np.concatenate(uncs_list, axis=0)
+        lesion_type_all = np.concatenate(lesion_type_list, axis=0)
+
+        del uncs_list, lesion_type_list, lesions
+        assert uncs_all.shape == lesion_type_all.shape
+
+        # sort uncertainties and lesions types
+        ordering = uncs_all.argsort()
+        lesion_type_all = lesion_type_all[ordering][::-1]
+
+        f1_values = [compute_f1(lesion_type_all)]
+
+        # reject the most uncertain lesion
+        for i_l, lesion_type in lesion_type_all:
+            if lesion_type == 'fp':
+                lesion_type_all[i_l] = 'tn'
+            elif lesion_type == 'fn':
+                lesion_type_all[i_l] = 'tp'
+            f1_values.append(compute_f1(lesion_type_all))
 
     # interpolate the curve and make predictions in the retention fraction nodes
-    n_lesions = cc_mask_all.shape[0]
-    spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions+1)], y=f1_values,
+    n_lesions = lesion_type_all.shape[0]
+    spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions + 1)], y=f1_values,
                                    kind='slinear', fill_value="extrapolate")
     return spline_interpolator(fracs_retained), f1_values

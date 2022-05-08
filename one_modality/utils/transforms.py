@@ -107,8 +107,6 @@ def get_FN_lesions_mask_parallel(ground_truth, predictions, IoU_threshold, mask_
         else:
             return None
 
-    fn_lesions = []
-
     mask_multi_gt_ = ndimage.label(ground_truth)[0]
     mask_multi_pred_ = ndimage.label(predictions)[0]
 
@@ -122,7 +120,7 @@ def get_FN_lesions_mask_parallel(ground_truth, predictions, IoU_threshold, mask_
 
 def get_TP_FP_lesions_mask_parallel(ground_truth, predictions, IoU_threshold, mask_type, parallel_backend):
     """
-    Returns arraus with TP and FP lesions from the prediction.
+    Returns arrays with TP and FP lesions from the prediction.
     """
     def get_tp_fp(label_pred, mask_multi_gt, mask_multi_pred):
         mask_label_pred = (mask_multi_pred == label_pred).astype(int)
@@ -133,7 +131,7 @@ def get_TP_FP_lesions_mask_parallel(ground_truth, predictions, IoU_threshold, ma
                 iou = intersection_over_union(mask_label_pred, mask_label_gt)
                 if iou > max_iou:
                     max_iou = iou
-        return ("tp" if max_iou >= IoU_threshold else "fp", mask_label_pred)
+        return "tp" if max_iou >= IoU_threshold else "fp", mask_label_pred
     
     fp_lesions_pred, tp_lesions_pred = [], []
 
@@ -145,11 +143,11 @@ def get_TP_FP_lesions_mask_parallel(ground_truth, predictions, IoU_threshold, ma
     tps_fps = parallel_backend(delayed(process)(label_pred) 
                                for label_pred in np.unique(mask_multi_pred_) if label_pred != 0.0)
 
-    for les in tps_fps:
-        if les[0] == 'fp': 
-            fp_lesions_pred.append(les[1])
+    for lesion_type, lesion in tps_fps:
+        if lesion_type == 'fp':
+            fp_lesions_pred.append(lesion)
         else: 
-            tp_lesions_pred.append(les[1])
+            tp_lesions_pred.append(lesion)
 
     return mask_encoding(lesion_masks_list=tp_lesions_pred, dtype="int", mask_type=mask_type), \
         mask_encoding(lesion_masks_list=fp_lesions_pred, dtype="int", mask_type=mask_type)
