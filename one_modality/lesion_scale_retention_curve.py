@@ -118,6 +118,8 @@ def main(args):
     # with Parallel(n_jobs=args.n_jobs) as parallel:
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
+            if count==2:
+                break
             # Get models predictions
             num_patients += 1
             inputs, gt = (
