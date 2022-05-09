@@ -120,8 +120,8 @@ def main(args):
     # with Parallel(n_jobs=args.n_jobs) as parallel:
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
-            if count==2:
-                break
+            # if count==2:
+            #     break
             # Get models predictions
             num_patients += 1
             inputs, gt = (
@@ -208,13 +208,13 @@ def main(args):
                 print(f"Processed {num_patients} scans")
 
     mean_1 = metric_rf_df_1.mean()
-    plt.plot(fracs_ret, mean_1, '-k', label="Average")
+    plt.plot(fracs_ret, mean_1, label="Average")
 
     mean_2 = metric_rf_df_2.mean()
-    plt.plot(fracs_ret, mean_2, '-k', label="Average")
+    plt.plot(fracs_ret, mean_2, label="Sum")
 
     mean_3 = metric_rf_df_3.mean()
-    plt.plot(fracs_ret, mean_3, '-k', label="Average")
+    plt.plot(fracs_ret, mean_3, label="Count")
 
     plt.xlim([0, 1.01])
     plt.legend()
