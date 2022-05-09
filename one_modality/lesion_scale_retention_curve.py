@@ -188,7 +188,7 @@ def main(args):
 
     plt.xlim([0, 1.01])
     plt.legend()
-    plt.savefig(args.path_save, f"mean_RC_f1{thresh_str}_{args.unc_metric}_df.png")
+    plt.savefig(f"mean_RC_f1{thresh_str}_{args.unc_metric}_df.png")
     plt.clf()
     
     # plot_mean_rc(metric_rf_df, fracs_ret,
