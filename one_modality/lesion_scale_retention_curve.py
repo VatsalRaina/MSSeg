@@ -179,7 +179,7 @@ def main(args):
 
     plt.xlim([0, 1.01])
     plt.legend()
-    plt.savefig(args.path_save)
+    plt.savefig('./ret_all.png')
     
     print(f"Saved f1 scores and retention curve to folder {args.path_save}")
 
