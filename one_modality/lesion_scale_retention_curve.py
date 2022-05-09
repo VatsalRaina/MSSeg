@@ -114,7 +114,7 @@ def main(args):
     fracs_ret /= np.amax(fracs_ret)
     #unc_types = ['average', 'sum', 'count']
     unc_types = ['average', 'sum']
-    all_metric_rf_df = [pd.DataFrame([], columns=fracs_ret)]*len(unc_types)
+    metric_rf_df_1 = pd.DataFrame([], columns=fracs_ret)
  
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
@@ -153,18 +153,18 @@ def main(args):
                                 np.expand_dims(1. - all_outputs, axis=-1)),
                                axis=-1))[args.unc_metric]   # [H, W, D]
 
-            for cnt_unc in range(len(all_metric_rf_df)):
 
-                metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
-                                                    preds=seg,
-                                                    uncs=uncs_value,
-                                                    fracs_retained=fracs_ret,
-                                                    IoU_threshold=args.IoU_threshold,
-                                                    n_jobs=args.n_jobs,
-                                                    unc_type=unc_types[cnt_unc])
-                row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
-                                    columns=fracs_ret, index=[0])
-                all_metric_rf_df[cnt_unc].append(row_df, ignore_index=True)
+
+            metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
+                                                preds=seg,
+                                                uncs=uncs_value,
+                                                fracs_retained=fracs_ret,
+                                                IoU_threshold=args.IoU_threshold,
+                                                n_jobs=args.n_jobs,
+                                                unc_type=u'average')
+            row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
+                                columns=fracs_ret, index=[0])
+            metric_rf_df_1.append(row_df, ignore_index=True)
             
             if num_patients % 1 == 0:
                 print(f"Processed {num_patients} scans")
@@ -174,12 +174,10 @@ def main(args):
     # with open(os.path.join(args.path_save, f"f1{thresh_str}-AAC_{args.unc_metric}.csv"), 'w') as f:
     #     f.write(f"mean AAC:\t{mean_aac}")
     
-    for cnt_unc in range(len(all_metric_rf_df)):
-        metric_rf_df = all_metric_rf_df[cnt_unc]
-        unc_type = unc_types[cnt_unc]
-        mean_average = metric_rf_df.mean()
-        print(mean_average)
-        plt.plot(fracs_ret, mean_average, label=unc_type)
+
+    mean_average = metric_rf_df_1.mean()
+    # print(mean_average)
+    plt.plot(fracs_ret, mean_average, label='Average')
 
     plt.xlim([0, 1.01])
     plt.legend()
