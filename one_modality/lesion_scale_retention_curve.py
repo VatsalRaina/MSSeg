@@ -112,11 +112,14 @@ def main(args):
     num_patients = 0
     fracs_ret = np.log(np.arange(200 + 1)[1:])
     fracs_ret /= np.amax(fracs_ret)
-    all_metric_rf_df = [pd.DataFrame([], columns=fracs_ret)]*3
-    unc_types = ['average', 'sum', 'count']
-
+    #unc_types = ['average', 'sum', 'count']
+    unc_types = ['average', 'sum']
+    all_metric_rf_df = [pd.DataFrame([], columns=fracs_ret)]*len(unc_types)
+ 
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
+            if count==2:
+                break
             # Get models predictions
             num_patients += 1
             inputs, gt = (
@@ -175,6 +178,7 @@ def main(args):
         metric_rf_df = all_metric_rf_df[cnt_unc]
         unc_type = unc_types[cnt_unc]
         mean_average = metric_rf_df.mean()
+        print(mean_average)
         plt.plot(fracs_ret, mean_average, label=unc_type)
 
     plt.xlim([0, 1.01])
