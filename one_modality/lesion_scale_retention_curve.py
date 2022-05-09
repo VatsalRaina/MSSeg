@@ -181,7 +181,7 @@ def main(args):
                 
             metric_rf_df.to_csv(os.path.join(args.path_save, f"RC_f1{thresh_str}_{args.unc_metric}_df.csv"))
             
-            if num_patients % 10 == 0:
+            if num_patients % 1 == 0:
                 print(f"Processed {num_patients} scans")
 
     mean_aac = 1. - metrics.auc(fracs_ret, np.asarray(metric_rf_df.mean()))
@@ -189,13 +189,13 @@ def main(args):
     with open(os.path.join(args.path_save, f"f1{thresh_str}-AAC_{args.unc_metric}.csv"), 'w') as f:
         f.write(f"mean AAC:\t{mean_aac}")
     
-    plot_iqr_median_rc(metric_rf_df, fracs_ret,
-                       os.path.join(args.path_save, f"IQR_RC_f1{thresh_str}_{args.unc_metric}_df.png"))
+    # plot_iqr_median_rc(metric_rf_df, fracs_ret,
+    #                    os.path.join(args.path_save, f"IQR_RC_f1{thresh_str}_{args.unc_metric}_df.png"))
     plot_mean_rc(metric_rf_df, fracs_ret,
                        os.path.join(args.path_save, f"mean_RC_f1{thresh_str}_{args.unc_metric}_df.png"))
-    for i, row in metric_rf_df.iterrows():
-        plt.plot(fracs_ret, row)
-    plt.savefig(os.path.join(args.path_save, f"subject_RC_f1{thresh_str}_{args.unc_metric}_df.png"))
+    # for i, row in metric_rf_df.iterrows():
+    #     plt.plot(fracs_ret, row)
+    # plt.savefig(os.path.join(args.path_save, f"subject_RC_f1{thresh_str}_{args.unc_metric}_df.png"))
     
     print(f"Saved f1 scores and retention curve to folder {args.path_save}")
 
