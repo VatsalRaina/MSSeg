@@ -71,6 +71,8 @@ parser.add_argument('--n_jobs', type=int, default=1,
 parser.add_argument('--num_workers', type=int, default=0,
                     help='number of jobs used to load the data, DataLoader parameter')
 parser.add_argument('--IoU_threshold', default=0.25, type=float, help="IoU threshold for lesion F1 computation")
+parser.add_argument('--unc_type', type=str, default='average', help='Approach for calculating lesion uncertainty')
+
 
 
 def main(args):
@@ -165,7 +167,8 @@ def main(args):
                                                  uncs=uncs_value,
                                                  fracs_retained=fracs_ret,
                                                  IoU_threshold=args.IoU_threshold,
-                                                 n_jobs=args.n_jobs)
+                                                 n_jobs=args.n_jobs,
+                                                 unc_type=args.unc_type)
             row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
                                   columns=fracs_ret, index=[0])
             metric_rf_df = metric_rf_df.append(row_df, ignore_index=True)

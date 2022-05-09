@@ -420,7 +420,7 @@ def get_metric_for_rc_lesion_old(gts, preds, uncs, IoU_threshold, fracs_retained
     return spline3_interpolator(fracs_retained)
 
 
-def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_jobs):
+def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_jobs, unc_type='average'):
     """
     :type gts: numpy.ndarray [H, W, D]
     :type preds: numpy.ndarray [H, W, D]
@@ -452,7 +452,8 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
         uncs_list[0] = lesions_uncertainty_sum(uncs_mask=uncs,
                                                binary_mask=lesions,
                                                dtype=int,
-                                               mask_type='one_hot')[0]
+                                               mask_type='one_hot',
+                                               unc_type=unc_type)[0]
 
         lesions = get_TP_FP_lesions_mask_parallel(ground_truth=gts,
                                                   predictions=preds,
@@ -463,12 +464,14 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
         uncs_list[1] = lesions_uncertainty_sum(uncs_mask=uncs,
                                                binary_mask=lesions[0],
                                                dtype=int,
-                                               mask_type='one_hot')[0]
+                                               mask_type='one_hot',
+                                               unc_type=unc_type)[0]
 
         uncs_list[2] = lesions_uncertainty_sum(uncs_mask=uncs,
                                                binary_mask=lesions[1],
                                                dtype=int,
-                                               mask_type='one_hot')[0]
+                                               mask_type='one_hot',
+                                               unc_type=unc_type)[0]
 
         lesion_type_list = [np.full(shape=unc.shape, fill_value=fill)
                             for unc, fill in zip(uncs_list, ['fn', 'tp', 'fp'])

@@ -60,7 +60,7 @@ def ensemble_uncertainties_classification(probs, epsilon=1e-10):
     return uncertainty
 
 
-def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='one_hot'):
+def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='one_hot', unc_type='average'):
     """
     Binary mask can be either gt or pred.
 
@@ -82,8 +82,15 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='
         if cc_label != 0.0:                         # exclude background
             cc_mask = (multi_mask == cc_label).astype(dtype)
             #if np.sum(cc_mask) > n_min_vox:
-            cc_unc = np.sum(uncs_mask * cc_mask) / np.sum(cc_mask)
+            if unc_type=="average":
+                cc_unc = np.sum(uncs_mask * cc_mask) / np.sum(cc_mask)
+            elif unc_type=="sum":
+                cc_unc = np.sum(uncs_mask * cc_mask) / np.sum(cc_mask)
+            elif unc_type=="count":
+                cc_unc = np.sum(cc_mask)
             uncs_list.append(cc_unc)
             lesions.append(cc_mask)
 
     return np.asarray(uncs_list), mask_encoding(lesion_masks_list=lesions, dtype=dtype, mask_type=mask_type)
+
+
