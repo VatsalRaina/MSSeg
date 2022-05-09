@@ -85,7 +85,7 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='
             if unc_type=="average":
                 cc_unc = np.sum(uncs_mask * cc_mask) / np.sum(cc_mask)
             elif unc_type=="sum":
-                cc_unc = np.sum(uncs_mask * cc_mask) / np.sum(cc_mask)
+                cc_unc = np.sum(uncs_mask * cc_mask)
             elif unc_type=="count":
                 cc_unc = np.sum(cc_mask)
             uncs_list.append(cc_unc)
