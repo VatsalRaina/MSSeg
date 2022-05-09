@@ -150,7 +150,7 @@ def main(args):
                                 np.expand_dims(1. - all_outputs, axis=-1)),
                                axis=-1))[args.unc_metric]   # [H, W, D]
 
-            for cnt_unc in len(all_metric_rf_df):
+            for cnt_unc in range(len(all_metric_rf_df)):
 
                 metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
                                                     preds=seg,
@@ -171,7 +171,7 @@ def main(args):
     # with open(os.path.join(args.path_save, f"f1{thresh_str}-AAC_{args.unc_metric}.csv"), 'w') as f:
     #     f.write(f"mean AAC:\t{mean_aac}")
     
-    for cnt_unc in len(all_metric_rf_df):
+    for cnt_unc in range(len(all_metric_rf_df)):
         metric_rf_df = all_metric_rf_df[cnt_unc]
         unc_type = unc_types[cnt_unc]
         mean_average = metric_rf_df.mean()
