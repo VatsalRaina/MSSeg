@@ -15,7 +15,6 @@ lesion_scale_retention_curve.py \
 --check_dataset \
 --n_jobs 10 --num_workers 10 \
 --IoU_threshold 0.5
-
          
 runfile('/home/meri/Code/MSSeg/one_modality/lesion_scale_retention_curve.py', wdir='/home/meri/Code/MSSeg/one_modality', args='--threshold 0.35 --num_models 5 --path_data /home/meri/data/canonical/dev_in --path_gts /home/meri/data/canonical/dev_in --path_model /home/meri/uncertainty_challenge/models_cv/ex_ljubljana/ --path_save /home/meri/uncertainty_challenge/results/f1_lesion_score/ --flair_prefix FLAIR.nii.gz --gts_prefix gt.nii --check_dataset --n_jobs 10 --num_workers 10 --IoU_threshold 0.25')
 """
@@ -71,8 +70,6 @@ parser.add_argument('--n_jobs', type=int, default=1,
 parser.add_argument('--num_workers', type=int, default=0,
                     help='number of jobs used to load the data, DataLoader parameter')
 parser.add_argument('--IoU_threshold', default=0.25, type=float, help="IoU threshold for lesion F1 computation")
-parser.add_argument('--lesion_unc_type', type=str, default='average', help='Approach for calculating lesion uncertainty')
-
 
 
 def main(args):
@@ -112,14 +109,15 @@ def main(args):
     num_patients = 0
     fracs_ret = np.log(np.arange(200 + 1)[1:])
     fracs_ret /= np.amax(fracs_ret)
-    #unc_types = ['average', 'sum', 'count']
-    unc_types = ['average', 'sum']
-    metric_rf_df_1 = pd.DataFrame([], columns=fracs_ret)
- 
+    metric_rf_df = pd.DataFrame([], columns=fracs_ret)
+    f1_dict = dict()
+    #     = dict(zip(
+    #     ['real', 'ideal', 'random'],
+    #     [pd.DataFrame([], columns=fracs_retained) for _ in range(3)]
+    # ))
+    # with Parallel(n_jobs=args.n_jobs) as parallel:
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
-            if count==2:
-                break
             # Get models predictions
             num_patients += 1
             inputs, gt = (
@@ -132,6 +130,7 @@ def main(args):
             all_outputs = []
             for model in models:
                 outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+                outputs_o = (act(outputs))
                 outputs = act(outputs).cpu().numpy()        # [1, 2, H, W, D]
                 all_outputs.append(np.squeeze(outputs[0, 1]))
             all_outputs = np.asarray(all_outputs)        # [M, H, W, D]
@@ -146,6 +145,13 @@ def main(args):
 
             val_labels = gt.cpu().numpy()   # [1, 1, H, W, D]
             gt = np.squeeze(val_labels)     # [H, W, D]
+            #gt = remove_connected_components(segmentation=gt, l_min=9)
+            
+            meta_data = batch_data['image_meta_dict']
+            for i, data in enumerate(outputs_o):  
+                out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
+
+            filename_or_obj = out_meta.get("filename_or_obj", None) if out_meta else None
 
             # Get all uncertainties
             uncs_value = ensemble_uncertainties_classification(
@@ -153,35 +159,39 @@ def main(args):
                                 np.expand_dims(1. - all_outputs, axis=-1)),
                                axis=-1))[args.unc_metric]   # [H, W, D]
 
-
-
             metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
-                                                preds=seg,
-                                                uncs=uncs_value,
-                                                fracs_retained=fracs_ret,
-                                                IoU_threshold=args.IoU_threshold,
-                                                n_jobs=args.n_jobs,
-                                                unc_type=u'average')
+                                                 preds=seg,
+                                                 uncs=uncs_value,
+                                                 fracs_retained=fracs_ret,
+                                                 IoU_threshold=args.IoU_threshold,
+                                                 n_jobs=args.n_jobs,
+                                                 unc_type='average')
             row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
-                                columns=fracs_ret, index=[0])
-            metric_rf_df_1.append(row_df, ignore_index=True)
+                                  columns=fracs_ret, index=[0])
+            metric_rf_df = metric_rf_df.append(row_df, ignore_index=True)
             
-            if num_patients % 1 == 0:
+            f1_dict[os.path.basename(filename_or_obj)] = f1_values
+            
+            json_filepath = os.path.join(args.path_save, f"subject_f1{thresh_str}_{args.unc_metric}.json")
+            with open(json_filepath, 'w') as f:
+                json.dump(f1_dict, f)
+                
+            metric_rf_df.to_csv(os.path.join(args.path_save, f"RC_f1{thresh_str}_{args.unc_metric}_df.csv"))
+            
+            if num_patients % 10 == 0:
                 print(f"Processed {num_patients} scans")
 
-    # mean_aac = 1. - metrics.auc(fracs_ret, np.asarray(metric_rf_df.mean()))
-    
-    # with open(os.path.join(args.path_save, f"f1{thresh_str}-AAC_{args.unc_metric}.csv"), 'w') as f:
-    #     f.write(f"mean AAC:\t{mean_aac}")
-    
-
-    mean_average = metric_rf_df_1.mean()
-    # print(mean_average)
-    plt.plot(fracs_ret, mean_average, label='Average')
+    mean = metric_rf_df.mean()
+    plt.plot(fracs_ret, mean, '-k')
 
     plt.xlim([0, 1.01])
     plt.legend()
-    plt.savefig('./ret_all.png')
+    plt.savefig(args.path_save, f"mean_RC_f1{thresh_str}_{args.unc_metric}_df.png")
+    plt.clf()
+    
+    # plot_mean_rc(metric_rf_df, fracs_ret,
+    #                    os.path.join(args.path_save, f"mean_RC_f1{thresh_str}_{args.unc_metric}_df.png"))
+
     
     print(f"Saved f1 scores and retention curve to folder {args.path_save}")
 
