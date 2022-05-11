@@ -176,25 +176,16 @@ def main(args):
 
             metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
                                                  preds=seg,
-                                                 uncs=uncs_value,
+                                                 uncs=abs(seg-gt),
                                                  fracs_retained=fracs_ret,
                                                  IoU_threshold=args.IoU_threshold,
                                                  n_jobs=args.n_jobs,
-                                                 unc_type='sum')
+                                                 unc_type='average')
             row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
                                   columns=fracs_ret, index=[0])
             metric_rf_df_2 = metric_rf_df_2.append(row_df, ignore_index=True)
 
-            metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
-                                                 preds=seg,
-                                                 uncs=uncs_value,
-                                                 fracs_retained=fracs_ret,
-                                                 IoU_threshold=args.IoU_threshold,
-                                                 n_jobs=args.n_jobs,
-                                                 unc_type='count')
-            row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
-                                  columns=fracs_ret, index=[0])
-            metric_rf_df_3 = metric_rf_df_3.append(row_df, ignore_index=True)
+
             
             f1_dict[os.path.basename(filename_or_obj)] = f1_values
             
@@ -208,13 +199,10 @@ def main(args):
                 print(f"Processed {num_patients} scans")
 
     mean_1 = metric_rf_df_1.mean()
-    plt.plot(fracs_ret, mean_1, label="Average")
+    plt.plot(fracs_ret, mean_1, label="Uncertainty")
 
     mean_2 = metric_rf_df_2.mean()
-    plt.plot(fracs_ret, mean_2, label="Sum")
-
-    mean_3 = metric_rf_df_3.mean()
-    plt.plot(fracs_ret, mean_3, label="Count")
+    plt.plot(fracs_ret, mean_2, label="Ideal")
 
     plt.xlim([0, 1.01])
     plt.legend()
