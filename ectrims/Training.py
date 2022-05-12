@@ -169,6 +169,7 @@ def main(args):
         print(f"epoch {epoch + 1}/{epoch_num}")
         model, lr , epoch_loss, optimizer, scheduler = train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh)
         lrs.append(lr)
+        epoch_loss_values.append(epoch_loss)
         print(f"epoch {epoch + 1} average train loss: {epoch_loss:.4f}")
         
         # early stopping
@@ -199,7 +200,8 @@ def main(args):
                   f"\nbest mean dice: {best_metric:.4f} at epoch: {best_metric_epoch}"
                   )
             
-        plot_history(epoch_loss_values, val_loss_values, lrs, metric_values, metric_values_train, val_interval, save_path) 
+        plot_history(epoch_loss_values, val_loss_values, lrs, metric_values, 
+                     metric_values_train, val_interval, save_path) 
 
             # %%
 
