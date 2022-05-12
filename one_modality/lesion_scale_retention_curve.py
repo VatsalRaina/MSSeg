@@ -217,8 +217,8 @@ def main(args):
     mean_3 = metric_rf_df_3.mean()
     plt.plot(fracs_ret, mean_3, label="Central")
 
-    mean_random = [0.0, mean_2[-1]]
-    plt.plot([0.0, 1.0], mean_random, label="Random")
+    # mean_random = [0.0, mean_2[-1]]
+    # plt.plot([0.0, 1.0], mean_random, label="Random")
 
     plt.xlim([0, 1.01])
     plt.legend()
