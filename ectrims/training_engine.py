@@ -26,7 +26,7 @@ def compute_meandice(y_pred, y):
     b = y.size(0)
     
     mean_dice = torch.tensor(0.0, device=device)
-    for i_b in b:
+    for i_b in range(b):
         denominator = y_pred[i_b].sum() + y[i_b].sum()
         intersec = torch.sum(y_pred[i_b] * y[i_b])
         if denominator == torch.tensor(0.0, device=device):
