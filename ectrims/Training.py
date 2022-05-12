@@ -167,10 +167,9 @@ def main(args):
     for epoch in range(epoch_num):
         print("-" * 10)
         print(f"epoch {epoch + 1}/{epoch_num}")
-        model, lr , epoch_loss, epoch_val_loss, optimizer, scheduler = train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh)
+        model, lr , epoch_loss, optimizer, scheduler = train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh)
         lrs.append(lr)
-        epoch_loss_values.append(epoch_loss)
-        print(f"epoch {epoch + 1} average train loss: {epoch_loss:.4f}, average val loss: {epoch_val_loss:.4f}")
+        print(f"epoch {epoch + 1} average train loss: {epoch_loss:.4f}")
         
         # early stopping
         current_loss = validation(model, act, val_loader, loss_function, device, thresh, only_loss=True)
@@ -179,12 +178,16 @@ def main(args):
             if silence_epochs > patience:
                 print(f"Early stopping on epoch {epoch + 1}")
                 break
+        else:
+            last_loss = current_loss
+            
+        # validation
         if (epoch + 1) % val_interval == 0:
             val_loss, val_dice = validation(model, act, val_loader, loss_function, device, thresh, only_loss=False)
             metric_values.append(val_dice)
             val_loss_values.append(val_loss)
             
-            train_loss, train_dice = validation(model, act, val_loader, loss_function, device, thresh, only_loss=False)
+            train_loss, train_dice = validation(model, act, val_train_loader, loss_function, device, thresh, only_loss=False)
             metric_values_train.append(train_dice)
             
             if val_dice > best_metric:

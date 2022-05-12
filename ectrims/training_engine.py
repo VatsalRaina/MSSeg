@@ -18,9 +18,9 @@ def compute_meandice(y_pred, y):
         raise ValueError(f"prediction {y_pred.size()}, target {y.size()}")
     if y_pred.dim() != 5 or y.dim() != 5:
         raise ValueError(f"Exprect five dims, prediction {y_pred.size()}, target {y.size()}")
-    if np.isin(y_pred.unique().cpu.numpy(), [0, 1]):
+    if np.isin(y_pred.unique().cpu().numpy(), [0, 1]):
         raise ValueError(f"y_pred should be OHE, got values {y_pred.uniqu()}")
-    if np.isin(y.unique().cpu.numpy(), [0, 1]):
+    if np.isin(y.unique().cpu().numpy(), [0, 1]):
         raise ValueError(f"y should be OHE, got values {y.uniqu()}")
         
     b = y.size(0)
@@ -79,6 +79,7 @@ def validation(model, act, val_loader, loss_function, device, thresh, only_loss=
             metric_count += 1
             if not only_loss:
                 metric_sum += compute_meandice(val_outputs, val_labels).mean().item()
+    model.train()
     if only_loss:          
         return loss_sum / metric_count
     return loss_sum / metric_count, metric_sum / metric_count
@@ -112,7 +113,7 @@ def plot_history(epoch_loss_values, val_loss_values, lrs, metric_values, metric_
     fig.savefig(os.path.join(save_path, 'train_history.png'))
     plt.close(fig)
     
-    
+'''    
 def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh):
     model.train()
     epoch_loss = 0
@@ -143,12 +144,47 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
                 val_loss = validation(model, act, val_loader, loss_function, device, thresh, only_loss=True)
                 epoch_loss_val.append(val_loss)
                 print(
-                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}, val_loss {val_loss:.4f}")
+                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}")
     lr = optimizer.param_groups[0]["lr"]
     scheduler.step()
     epoch_loss /= step_print
     
     return model, lr , epoch_loss, np.mean(epoch_loss_val), optimizer, scheduler
+    '''
+
+def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh):
+    model.train()
+    epoch_loss = 0
+    step = 0
+    for batch_data in train_loader:
+        n_samples = batch_data["image"].size(0)
+        for m in range(0, batch_data["image"].size(0), 2):
+            step += 2
+            inputs, labels = (
+                batch_data["image"][m:(m + 2)].to(device),
+                batch_data["label"][m:(m + 2)])
+            optimizer.zero_grad()
+            outputs = model(inputs)
+
+            # Dice loss
+            labels = torch.stack([
+                (labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [0, 1, 2]
+                ], dim=1).to(device)
+            loss = loss_function(outputs, labels)
+
+            loss.backward()
+            optimizer.step()
+
+            epoch_loss += loss.item()
+            if step % 100 == 0:
+                step_print = int(step / 2)
+                print(
+                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}")
+    lr = optimizer.param_groups[0]["lr"]
+    scheduler.step()
+    epoch_loss /= step_print
+    
+    return model, lr, epoch_loss, optimizer, scheduler
     
     
     
