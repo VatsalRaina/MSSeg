@@ -194,7 +194,7 @@ def main(args):
                                                  fracs_retained=fracs_ret,
                                                  IoU_threshold=args.IoU_threshold,
                                                  n_jobs=args.n_jobs,
-                                                 unc_type='Gaussian')
+                                                 unc_type='gaussian')
             row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
                                   columns=fracs_ret, index=[0])
             metric_rf_df_3 = metric_rf_df_3.append(row_df, ignore_index=True)
