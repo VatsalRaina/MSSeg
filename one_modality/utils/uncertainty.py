@@ -97,6 +97,22 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='
                 posZ = int(np.median(voxel_pos[2]))
                 cc_unc = uncs_mask[posX,posY,posZ]
             elif unc_type=="gaussian":
+                # weight the uncertainties using a 3D sphericalGaussian centred at the lesion centre and then just add them up
+                voxel_pos = np.where(cc_mask==1)
+                posX = int(np.median(voxel_pos[0]))
+                posY = int(np.median(voxel_pos[1]))
+                posZ = int(np.median(voxel_pos[2]))
+                maxX, maxY, maxZ = np.shape(cc_mask)
+                x, y, z = np.mgrid[0:maxX:1, 0:maxY:1, 0:maxZ:1]
+                grid = np.stack((x,y,z), axis=-1)
+                mean_vector = [posX, posY, posZ]
+                sigma = 1
+                covariance_matrix = [[sigma,0,0], [0,sigma,0], [0,0,sigma]]
+                rv = multivariate_normal(mean_vector, covariance_matrix)
+                gauss_mat = rv.pdf(grid)
+                weighted_unc = gauss_mat * uncs_mask
+                cc_unc = np.sum(weighted_unc * cc_mask)
+            elif unc_type=="gaussian_fitted":
                 # weight the uncertainties using a 3D Gaussian centred at the lesion centre and then just add them up
                 voxel_pos = np.where(cc_mask==1)
                 posX = int(np.median(voxel_pos[0]))
@@ -106,7 +122,8 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='
                 x, y, z = np.mgrid[0:maxX:1, 0:maxY:1, 0:maxZ:1]
                 grid = np.stack((x,y,z), axis=-1)
                 mean_vector = [posX, posY, posZ]
-                covariance_matrix = [[1,0,0], [0,1,0], [0,0,1]]
+                sigma = 1
+                covariance_matrix = [[sigma*(maxX/(maxX+maxY+maxZ)),0,0], [0,sigma*(maxY/(maxX+maxY+maxZ)),0], [0,0,sigma*(maxZ/(maxX+maxY+maxZ))]]
                 rv = multivariate_normal(mean_vector, covariance_matrix)
                 gauss_mat = rv.pdf(grid)
                 weighted_unc = gauss_mat * uncs_mask

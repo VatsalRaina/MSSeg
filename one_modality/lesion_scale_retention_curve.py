@@ -199,38 +199,38 @@ def main(args):
                                   columns=fracs_ret, index=[0])
             metric_rf_df_3 = metric_rf_df_3.append(row_df, ignore_index=True)
 
-            metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
-                                                 preds=seg,
-                                                 uncs=abs(seg-gt),
-                                                 fracs_retained=fracs_ret,
-                                                 IoU_threshold=args.IoU_threshold,
-                                                 n_jobs=args.n_jobs,
-                                                 unc_type='average')
-            row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
-                                  columns=fracs_ret, index=[0])
-            metric_rf_df_4 = metric_rf_df_4.append(row_df, ignore_index=True)
+            # metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
+            #                                      preds=seg,
+            #                                      uncs=abs(seg-gt),
+            #                                      fracs_retained=fracs_ret,
+            #                                      IoU_threshold=args.IoU_threshold,
+            #                                      n_jobs=args.n_jobs,
+            #                                      unc_type='average')
+            # row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
+            #                       columns=fracs_ret, index=[0])
+            # metric_rf_df_4 = metric_rf_df_4.append(row_df, ignore_index=True)
 
-            metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
-                                                 preds=seg,
-                                                 uncs=abs(seg-gt),
-                                                 fracs_retained=fracs_ret,
-                                                 IoU_threshold=args.IoU_threshold,
-                                                 n_jobs=args.n_jobs,
-                                                 unc_type='central')
-            row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
-                                  columns=fracs_ret, index=[0])
-            metric_rf_df_5 = metric_rf_df_5.append(row_df, ignore_index=True)
+            # metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
+            #                                      preds=seg,
+            #                                      uncs=abs(seg-gt),
+            #                                      fracs_retained=fracs_ret,
+            #                                      IoU_threshold=args.IoU_threshold,
+            #                                      n_jobs=args.n_jobs,
+            #                                      unc_type='central')
+            # row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
+            #                       columns=fracs_ret, index=[0])
+            # metric_rf_df_5 = metric_rf_df_5.append(row_df, ignore_index=True)
 
-            metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
-                                                 preds=seg,
-                                                 uncs=abs(seg-gt),
-                                                 fracs_retained=fracs_ret,
-                                                 IoU_threshold=args.IoU_threshold,
-                                                 n_jobs=args.n_jobs,
-                                                 unc_type='gaussian')
-            row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
-                                  columns=fracs_ret, index=[0])
-            metric_rf_df_6 = metric_rf_df_6.append(row_df, ignore_index=True)
+            # metric_rf, f1_values = get_metric_for_rc_lesion(gts=gt,
+            #                                      preds=seg,
+            #                                      uncs=abs(seg-gt),
+            #                                      fracs_retained=fracs_ret,
+            #                                      IoU_threshold=args.IoU_threshold,
+            #                                      n_jobs=args.n_jobs,
+            #                                      unc_type='gaussian')
+            # row_df = pd.DataFrame(np.expand_dims(metric_rf, axis=0), 
+            #                       columns=fracs_ret, index=[0])
+            # metric_rf_df_6 = metric_rf_df_6.append(row_df, ignore_index=True)
 
             
             f1_dict[os.path.basename(filename_or_obj)] = f1_values
@@ -255,15 +255,6 @@ def main(args):
 
     mean_3 = metric_rf_df_3.mean()
     plt.plot(fracs_ret, mean_3, label="Gaussian (RMI)")
-
-    mean_4 = metric_rf_df_4.mean()
-    plt.plot(fracs_ret, mean_4, label="Average (Ideal)")
-
-    mean_5 = metric_rf_df_5.mean()
-    plt.plot(fracs_ret, mean_5, label="Central (Ideal)")
-
-    mean_6 = metric_rf_df_6.mean()
-    plt.plot(fracs_ret, mean_6, label="Gaussian (Ideal)")
 
     # mean_random = [0.0, mean_2[-1]]
     # plt.plot([0.0, 1.0], mean_random, label="Random")
