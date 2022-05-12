@@ -12,6 +12,7 @@ Implementation of standard predictive uncertainty measures for image segmentatio
 
 import numpy as np
 from scipy import ndimage
+from scipy.stats import multivariate_normal
 # 
 
 
@@ -95,6 +96,21 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='
                 posY = int(np.median(voxel_pos[1]))
                 posZ = int(np.median(voxel_pos[2]))
                 cc_unc = uncs_mask[posX,posY,posZ]
+            elif unc_type=="gaussian":
+                # weight the uncertainties using a 3D Gaussian centred at the lesion centre and then just add them up
+                voxel_pos = np.where(cc_mask==1)
+                posX = int(np.median(voxel_pos[0]))
+                posY = int(np.median(voxel_pos[1]))
+                posZ = int(np.median(voxel_pos[2]))
+                maxX, maxY,  maxZ = np.shape(cc_mask)
+                x, y, z = np.mgrid[0:maxX:1, 0:maxY:1, 0:maxZ:1]
+                grid = np.dstack((x,y,z))
+                mean_vector = [posX, posY, posZ]
+                covariance_matrix = [[1,0,0], [0,1,0], [0,0,1]]
+                rv = multivariate_normal(mean_vector, covariance_matrix)
+                gauss_mat = rv.pdf(grid)
+                weighted_unc = gauss_mat * uncs_mask
+                cc_unc = np.sum(weighted_unc)
 
             uncs_list.append(cc_unc)
             lesions.append(cc_mask)
