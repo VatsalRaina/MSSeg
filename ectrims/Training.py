@@ -97,7 +97,7 @@ def main(args):
                                    gts_prefix=args.gts_prefix,
                                    transforms=train_transforms_seed,
                                    num_workers=args.num_workers,
-                                   batch_size=1, cash_rate=0.1)
+                                   batch_size=1, cash_rate=0.5)
     val_loader = get_data_loader(path_flair=args.path_val,
                                  path_mp2rage=args.path_val,
                                  path_gts=args.path_val,
@@ -106,7 +106,7 @@ def main(args):
                                  gts_prefix=args.gts_prefix,
                                  transforms=val_transforms_seed,
                                  num_workers=args.num_workers,
-                                 batch_size=1, cash_rate=0.1)
+                                 batch_size=1, cash_rate=0.5)
     val_train_loader = get_data_loader(path_flair=args.path_train,
                                    path_mp2rage=args.path_train,
                                    path_gts=args.path_train,
@@ -115,7 +115,7 @@ def main(args):
                                    gts_prefix=args.gts_prefix,
                                    transforms=val_transforms_seed,
                                    num_workers=args.num_workers,
-                                   batch_size=1, cash_rate=0.1)
+                                   batch_size=1, cash_rate=0.5)
 
     ''' Init model '''
     model = UNet(
