@@ -88,6 +88,14 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='
                 cc_unc = np.sum(uncs_mask * cc_mask)
             elif unc_type=="count":
                 cc_unc = np.sum(cc_mask)
+            elif unc_type=="central":
+                # identify the central voxel and only use that as the uncertainty measure
+                voxel_pos = np.where(cc_mask==1)
+                posX = int(np.median(voxel_pos[0]))
+                posY = int(np.median(voxel_pos[1]))
+                posZ = int(np.median(voxel_pos[2]))
+                cc_unc = uncs_mask[posX,posY,posZ]
+
             uncs_list.append(cc_unc)
             lesions.append(cc_mask)
 
