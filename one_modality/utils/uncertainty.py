@@ -104,7 +104,7 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='
                 posZ = int(np.median(voxel_pos[2]))
                 maxX, maxY, maxZ = np.shape(cc_mask)
                 x, y, z = np.mgrid[0:maxX:1, 0:maxY:1, 0:maxZ:1]
-                grid = np.dstack((x,y,z))
+                grid = np.stack((x,y,z), axis=-1)
                 mean_vector = [posX, posY, posZ]
                 covariance_matrix = [[1,0,0], [0,1,0], [0,0,1]]
                 rv = multivariate_normal(mean_vector, covariance_matrix)
