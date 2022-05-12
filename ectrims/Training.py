@@ -97,7 +97,7 @@ def main(args):
                                    gts_prefix=args.gts_prefix,
                                    transforms=train_transforms_seed,
                                    num_workers=args.num_workers,
-                                   batch_size=1, cash_rate=0.3)
+                                   batch_size=1, cash_rate=0.1)
     val_loader = get_data_loader(path_flair=args.path_val,
                                  path_mp2rage=args.path_val,
                                  path_gts=args.path_val,
@@ -106,7 +106,7 @@ def main(args):
                                  gts_prefix=args.gts_prefix,
                                  transforms=val_transforms_seed,
                                  num_workers=args.num_workers,
-                                 batch_size=1, cash_rate=0.3)
+                                 batch_size=1, cash_rate=0.1)
     val_train_loader = get_data_loader(path_flair=args.path_train,
                                    path_mp2rage=args.path_train,
                                    path_gts=args.path_train,
@@ -115,21 +115,23 @@ def main(args):
                                    gts_prefix=args.gts_prefix,
                                    transforms=val_transforms_seed,
                                    num_workers=args.num_workers,
-                                   batch_size=1, cash_rate=0.3)
+                                   batch_size=1, cash_rate=0.1)
 
     ''' Init model '''
     model = UNet(
         spatial_dims=3,
         in_channels=2,
-        out_channels=2,
+        out_channels=3,
         channels=(32, 64, 128, 256, 512),
         strides=(2, 2, 2, 2),
-        num_res_units=0).to(device)
+        num_res_units=3)
+    model = init_weights(model)
+    model = model.to(device)
     # loss_function = DiceCELoss(ce_weight=torch.Tensor([1, 5]), lambda_dice=0.5, lambda_ce=1.)
     loss_function = DiceFocalLoss(include_background=True,
                                   to_onehot_y=False,
                                   softmax=True,
-                                  focal_weight=torch.Tensor([1, 5]), 
+                                  focal_weight=torch.Tensor([1, 1, 5]), 
                                   lambda_dice=0.5, 
                                   lambda_focal=1.0, 
                                   gamma=2.0,

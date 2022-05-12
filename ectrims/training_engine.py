@@ -10,6 +10,7 @@ from monai.inferers import sliding_window_inference
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+from torch import nn
 
 def compute_meandice(y_pred, y):
     device = y_pred.device
@@ -17,9 +18,9 @@ def compute_meandice(y_pred, y):
         raise ValueError(f"prediction {y_pred.size()}, target {y.size()}")
     if y_pred.dim() != 5 or y.dim() != 5:
         raise ValueError(f"Exprect five dims, prediction {y_pred.size()}, target {y.size()}")
-    if y_pred.unique() != torch.Tensor([0, 1]).to(device):
+    if np.isin(y_pred.unique().cpu.numpy(), [0, 1]):
         raise ValueError(f"y_pred should be OHE, got values {y_pred.uniqu()}")
-    if y.unique() != torch.Tensor([0, 1]).to(device):
+    if np.isin(y.unique().cpu.numpy(), [0, 1]):
         raise ValueError(f"y should be OHE, got values {y.uniqu()}")
         
     b = y.size(0)
@@ -40,6 +41,12 @@ def print_tensor_summary(t, name):
     print('Unique: ', t.unique())
     print('Sum: ', t.sum())
     
+def init_weights(unet):
+    for layer in unet.model.modules():
+        if type(layer) == nn.Conv3d:
+            nn.init.xavier_normal_(layer.weight, gain=1.0)
+    return unet
+            
 def validation(model, act, val_loader, loss_function, device, thresh, only_loss=False):
     model.eval()
     with torch.no_grad():
@@ -57,7 +64,7 @@ def validation(model, act, val_loader, loss_function, device, thresh, only_loss=
             val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model, mode='gaussian')
 
             val_labels = torch.stack([
-            (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
+            (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [0, 1, 2]
             ], dim=1).to(device)
             
             val_outputs = act(val_outputs)
@@ -123,7 +130,7 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
 
             # Dice loss
             labels = torch.stack([
-                (labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
+                (labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [0, 1, 2]
                 ], dim=1).to(device)
             loss = loss_function(outputs, labels)
 
