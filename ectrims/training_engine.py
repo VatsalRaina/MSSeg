@@ -19,9 +19,9 @@ def compute_meandice(y_pred, y):
     if y_pred.dim() != 5 or y.dim() != 5:
         raise ValueError(f"Exprect five dims, prediction {y_pred.size()}, target {y.size()}")
     if np.isin(y_pred.unique().cpu().numpy(), [0, 1]):
-        raise ValueError(f"y_pred should be OHE, got values {y_pred.uniqu()}")
+        raise ValueError(f"y_pred should be OHE, got values {y_pred.unique()}")
     if np.isin(y.unique().cpu().numpy(), [0, 1]):
-        raise ValueError(f"y should be OHE, got values {y.uniqu()}")
+        raise ValueError(f"y should be OHE, got values {y.unique()}")
         
     b = y.size(0)
     
