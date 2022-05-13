@@ -150,7 +150,7 @@ def main(args):
 
     epoch_num = args.n_epochs
     val_interval = 1
-    best_metric = -1
+    best_loss = -1
     best_metric_epoch = -1
     epoch_loss_values = list()
     val_loss_values = list()
@@ -195,8 +195,8 @@ def main(args):
             train_loss, train_dice = validation(model, act, val_train_loader, loss_function, device, thresh, only_loss=False)
             metric_values_train.append(train_dice)
             
-            if val_dice > best_metric:
-                best_metric = val_dice
+            if val_loss < best_loss:
+                best_loss = val_loss
                 best_metric_epoch = epoch + 1
                 torch.save(model.state_dict(), os.path.join(args.path_save, "Best_model_finetuning.pth"))
                 print("saved new best metric model")
