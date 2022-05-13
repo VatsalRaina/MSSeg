@@ -70,16 +70,46 @@ def validation(model, act, val_loader, loss_function, device, thresh, only_loss=
             val_outputs = act(val_outputs)
             val_outputs[val_outputs >= thresh] = 1.
             val_outputs[val_outputs < thresh] = 0.
-            
-            # print_tensor_summary(val_outputs, 'outputs')
-            # print_tensor_summary(val_labels, 'targets')
-                                                  
+                                             
             loss_sum += loss_function(val_outputs, val_labels).item()
 
             metric_count += 1
             if not only_loss:
                 metric_sum += compute_meandice(val_outputs, val_labels).mean().item()
-    model.train()
+    model.train(True)
+    if only_loss:          
+        return loss_sum / metric_count
+    return loss_sum / metric_count, metric_sum / metric_count
+
+
+def validation_one_class(model, act, val_loader, loss_function, device, thresh, only_loss=False):
+    model.eval()
+    with torch.no_grad():
+        if not only_loss:
+            metric_sum = 0.0
+        metric_count = 0
+        loss_sum = 0.0
+        for val_data in val_loader:
+            val_inputs, val_labels = (
+                val_data["image"].to(device),
+                val_data["label"].to(device),
+            )
+            roi_size = (96, 96, 96)
+            sw_batch_size = 4
+            val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model, mode='gaussian')
+
+            val_labels = (val_labels > 0).type(torch.LongTensor).to(device)
+            
+            val_outputs = act(val_outputs)
+            val_outputs[val_outputs >= thresh] = 1.
+            val_outputs[val_outputs < thresh] = 0.
+                                             
+            loss_sum += loss_function(val_outputs, val_labels).item()
+
+            metric_count += 1
+            if not only_loss:
+                metric_sum += compute_meandice(val_outputs, val_labels).mean().item()
+    model.train(True)
     if only_loss:          
         return loss_sum / metric_count
     return loss_sum / metric_count, metric_sum / metric_count
@@ -153,7 +183,7 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
     '''
 
 def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh):
-    model.train()
+    model.train(True)
     epoch_loss = 0
     step = 0
     for batch_data in train_loader:
@@ -184,7 +214,43 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
     scheduler.step()
     epoch_loss /= step_print
     
-    return model, lr, epoch_loss, optimizer, scheduler
+    return lr, epoch_loss
+
+
+def train_one_epoch_one_class(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh):
+    model.train(True)
+    epoch_loss = 0
+    step = 0
+    for batch_data in train_loader:
+        n_samples = batch_data["image"].size(0)
+        for m in range(0, batch_data["image"].size(0), 2):
+            step += 2
+            inputs, labels = (
+                batch_data["image"][m:(m + 2)].to(device),
+                batch_data["label"][m:(m + 2)])
+            optimizer.zero_grad()
+            outputs = model(inputs)
+
+            # Dice loss
+            labels = (labels > 0).type(torch.LongTensor).to(device)
+            loss = loss_function(outputs, labels)
+
+            loss.backward()
+            optimizer.step()
+
+            epoch_loss += loss.item()
+            if step % 100 == 0:
+                step_print = int(step / 2)
+                val_loss, val_metric = validation_one_class(model, act, val_loader, loss_function, device, thresh, only_loss=False)
+                print(
+                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}"
+                    f"\nval_loss {val_loss:.4f}"
+                    )
+    lr = optimizer.param_groups[0]["lr"]
+    scheduler.step()
+    epoch_loss /= step_print
+    
+    return lr, epoch_loss
     
     
     
