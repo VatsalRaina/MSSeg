@@ -19,7 +19,7 @@
 source activate msseg
 cd /data/bach/MultipleSclerosis/nataliia/MSSeg/ectrims
 
-srun python /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/Training_nw_one_class.py \
+srun python /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/Training_focal.py \
 --n_epochs 200 \
 --seed 1 \
 --threshold 0.4 \

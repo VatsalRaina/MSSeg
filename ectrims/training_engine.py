@@ -64,14 +64,14 @@ def validation(model, act, val_loader, loss_function, device, thresh, only_loss=
             val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model, mode='gaussian')
 
             val_labels = torch.stack([
-            (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [0, 1, 2]
+            (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
             ], dim=1).to(device)
+            
+            loss_sum += loss_function(val_outputs, val_labels).item()
             
             val_outputs = act(val_outputs)
             val_outputs[val_outputs >= thresh] = 1.
             val_outputs[val_outputs < thresh] = 0.
-                                             
-            loss_sum += loss_function(val_outputs, val_labels).item()
 
             metric_count += 1
             if not only_loss:
@@ -100,11 +100,12 @@ def validation_one_class(model, act, val_loader, loss_function, device, thresh, 
 
             val_labels = (val_labels > 0).type(torch.LongTensor).to(device)
             
+            loss_sum += loss_function(val_outputs, val_labels).item()
+            
             val_outputs = act(val_outputs)
             val_outputs[val_outputs >= thresh] = 1.
             val_outputs[val_outputs < thresh] = 0.
-                                             
-            loss_sum += loss_function(val_outputs, val_labels).item()
+              
 
             metric_count += 1
             if not only_loss:
@@ -186,6 +187,7 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
     model.train(True)
     epoch_loss = 0
     step = 0
+    print("Learning rate: {optimizer.param_groups[0]['lr']}")
     for batch_data in train_loader:
         n_samples = batch_data["image"].size(0)
         for m in range(0, batch_data["image"].size(0), 2):
@@ -198,7 +200,7 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
 
             # Dice loss
             labels = torch.stack([
-                (labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [0, 1, 2]
+                (labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
                 ], dim=1).to(device)
             loss = loss_function(outputs, labels)
 
@@ -208,8 +210,11 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
             epoch_loss += loss.item()
             if step % 100 == 0:
                 step_print = int(step / 2)
+                val_loss, val_metric = validation(model, act, val_loader, loss_function, device, thresh, only_loss=False)
                 print(
-                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}")
+                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}"
+                    f"\nval_loss {val_loss:.4f}"
+                    )
     lr = optimizer.param_groups[0]["lr"]
     scheduler.step()
     epoch_loss /= step_print
