@@ -187,7 +187,7 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
     model.train(True)
     epoch_loss = 0
     step = 0
-    print("Learning rate: {optimizer.param_groups[0]['lr']}")
+    print(f"Learning rate: {optimizer.param_groups[0]['lr']}")
     for batch_data in train_loader:
         n_samples = batch_data["image"].size(0)
         for m in range(0, batch_data["image"].size(0), 2):

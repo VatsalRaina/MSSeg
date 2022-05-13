@@ -163,7 +163,7 @@ def main(args):
     
     # early stopping params
     patience = 5    # stop training if val loss did not improve during several epochs
-    tolerance = 1e-5
+    tolerance = 1e-6
     last_loss = np.inf
     current_loss = 0.0
     silence_epochs = 0.0

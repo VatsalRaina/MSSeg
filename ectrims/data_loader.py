@@ -4,7 +4,7 @@ from monai.losses import DiceLoss, GeneralizedDiceLoss, TverskyLoss
 from monai.metrics import compute_meandice
 from monai.networks.nets import UNet
 from monai.transforms import (
-    AddChanneld,Compose,CropForegroundd,LoadImaged,Orientationd,RandCropByPosNegLabeld,
+    AddChanneld,Compose,CropForegroundd,LoadImaged,Orientationd,RandCropByPosNegLabeld, RandCropByLabelClassesd,
     ScaleIntensityRanged,Spacingd,ToTensord,ConcatItemsd,NormalizeIntensityd, RandFlipd,
     RandRotate90d,RandShiftIntensityd,RandAffined,RandSpatialCropd, RandScaleIntensityd, Activations,SqueezeDimd)
 import numpy as np
@@ -22,13 +22,17 @@ train_transforms = Compose(
         AddChanneld(keys=["flair", "mp2rage" ,"label"]),
         Spacingd(keys=["flair" ,"mp2rage" ,"label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear" ,"nearest")),
         NormalizeIntensityd(keys=["flair", "mp2rage"], nonzero=True),
-        RandShiftIntensityd(keys="flair" ,offsets=0.1 ,prob=1.0),
-        RandShiftIntensityd(keys="mp2rage" ,offsets=0.1 ,prob=1.0),
-        RandScaleIntensityd(keys="flair" ,factors=0.1 ,prob=1.0),
-        RandScaleIntensityd(keys="mp2rage" ,factors=0.1 ,prob=1.0),
+        RandShiftIntensityd(keys="flair" ,offsets=0.1 ,prob=0.5),
+        RandShiftIntensityd(keys="mp2rage" ,offsets=0.1 ,prob=0.5),
+        RandScaleIntensityd(keys="flair" ,factors=0.1 ,prob=0.5),
+        RandScaleIntensityd(keys="mp2rage" ,factors=0.1 ,prob=0.5),
         ConcatItemsd(keys=["flair", "mp2rage"], name="image"),
         RandCropByPosNegLabeld(keys=["image", "label"] ,label_key="label" ,spatial_size=(128, 128, 128),
-                               pos=4 ,neg=1 ,num_samples=32 ,image_key="image"),
+                                pos=4 ,neg=1 ,num_samples=32 ,image_key="image"),
+        
+        # RandCropByLabelClassesd(keys=["image", "label"], label_key="label", 
+        #                         spatial_size=(128, 128, 128), 
+        #                         ratios=[0., 1., 3.], num_classes=3, num_samples=32, image_key='image'),
         RandSpatialCropd(keys=["image", "label"], roi_size=(96, 96, 96), random_center=True, random_size=False),
         RandFlipd (keys=["image", "label"] ,prob=0.5 ,spatial_axis=(0 ,1 ,2)),
         RandRotate90d (keys=["image", "label"] ,prob=0.5 ,spatial_axes=(0 ,1)),
