@@ -278,7 +278,7 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
                     "val_loss {:.4f}".format(val_loss)
                     )
     lr = optimizer.param_groups[0]["lr"]
-    # scheduler.step()
+    scheduler.step()
     # epoch_loss /= step_print
     for key, val in epoch_loss.items():
         epoch_loss[key] = val / step_print
