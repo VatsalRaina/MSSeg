@@ -15,6 +15,8 @@ import numpy as np
 import random
 from data_loader import train_transforms, val_transforms, get_data_loader
 from training_engine import *
+import matplotlib.pyplot as plt
+import pandas as pd
 
 '''
 python Training.py \
@@ -121,7 +123,7 @@ def main(args):
     model = UNet(
         spatial_dims=3,
         in_channels=2,
-        out_channels=1,
+        out_channels=3,
         channels=(32, 64, 128, 256, 512),
         strides=(2, 2, 2, 2),
         num_res_units=0)
@@ -141,7 +143,7 @@ def main(args):
     #                           reduction='mean')
     loss_function = torch.nn.BCEWithLogitsLoss()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=1e-4, 
     #                                               max_lr=5e-3,step_size_up=3,
     #                                               cycle_momentum=False,
@@ -161,9 +163,11 @@ def main(args):
     metric_values = list()
     metric_values_train = list()
     lrs = list()
-    act = Activations(sigmoid=True)
+    act = Activations(softmax=True)
     thresh = args.threshold
     save_path=args.path_save
+    
+    epoch_loss_values_df = pd.DataFrame([], columns=['total', 'cl_loss', 'wm_loss', 'bg_loss'])
     
     # early stopping params
     patience = 6    # stop training if val loss did not improve during several epochs
@@ -177,8 +181,10 @@ def main(args):
         print(f"epoch {epoch + 1}/{epoch_num}")
         lr , epoch_loss=train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh)
         lrs.append(lr)
-        epoch_loss_values.append(epoch_loss)
-        print(f"epoch {epoch + 1} average train loss: {epoch_loss:.4f}")
+        # epoch_loss_values.append(epoch_loss)
+        epoch_loss_values.append(epoch_loss['total'])
+        epoch_loss_values_df = epoch_loss_values_df.append(epoch_loss, ignore_index=True)
+        print(f"epoch {epoch + 1} average train loss: {epoch_loss['total']:.4f}")
         
         # early stopping
         current_loss = validation(model, act, val_loader, loss_function, device, thresh, only_loss=True)
@@ -216,8 +222,17 @@ def main(args):
                   )
             
         plot_history(epoch_loss_values, val_loss_values, lrs, metric_values, 
-                     metric_values_train, val_interval, save_path) 
-
+                     metric_values_train, val_interval, save_path)
+        
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        for col in epoch_loss_values_df.columns:
+            ax.plot(epoch_loss_values_df[col], label=col)
+        ax.set_title('Losses on training')
+        ax.set_xlabel('steps')
+        ax.legend()
+        plt.show()
+        fig.savefig(os.path.join(save_path, 'cl_wm_bg_loss.png'))
+        plt.close(fig)
             # %%
 
 
