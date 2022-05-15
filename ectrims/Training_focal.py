@@ -121,7 +121,7 @@ def main(args):
     model = UNet(
         spatial_dims=3,
         in_channels=2,
-        out_channels=2,
+        out_channels=1,
         channels=(32, 64, 128, 256, 512),
         strides=(2, 2, 2, 2),
         num_res_units=0)
@@ -136,33 +136,37 @@ def main(args):
     #                               lambda_focal=1.0, 
     #                               gamma=2.0,
     #                               reduction='mean')
-    loss_function = FocalLoss(include_background=True, to_onehot_y=False, 
-                              gamma=2.0, weight=torch.Tensor([1., 5.]), 
-                              reduction='mean')
+    # loss_function = FocalLoss(include_background=True, to_onehot_y=False, 
+    #                           gamma=0.1, weight=torch.Tensor([1., 10.]), 
+    #                           reduction='mean')
+    loss_function = torch.nn.BCEWithLogitsLoss()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-3)
-    scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=5e-5, 
-                                                  max_lr=5e-3,step_size_up=10,
-                                                  cycle_momentum=False,
-                                                  mode="triangular2")
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+    # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=1e-4, 
+    #                                               max_lr=5e-3,step_size_up=3,
+    #                                               cycle_momentum=False,
+    #                                               mode="triangular2")
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.5)
     # Load trained model
     # model.load_state_dict(torch.load(os.path.join(root_dir, "Initial_model.pth")))
 
     epoch_num = args.n_epochs
     val_interval = 1
-    best_loss = -1
-    best_metric_epoch = -1
+    best_loss = np.inf
+    best_metric = -1
+    best_metric_epoch = 0
+    best_loss_epoch = 0
     epoch_loss_values = list()
     val_loss_values = list()
     metric_values = list()
     metric_values_train = list()
     lrs = list()
-    act = Activations(softmax=True)
+    act = Activations(sigmoid=True)
     thresh = args.threshold
     save_path=args.path_save
     
     # early stopping params
-    patience = 5    # stop training if val loss did not improve during several epochs
+    patience = 6    # stop training if val loss did not improve during several epochs
     tolerance = 1e-6
     last_loss = np.inf
     current_loss = 0.0
@@ -195,13 +199,20 @@ def main(args):
             train_loss, train_dice = validation(model, act, val_train_loader, loss_function, device, thresh, only_loss=False)
             metric_values_train.append(train_dice)
             
+            if val_dice > best_metric: 
+                best_metric_epoch = epoch + 1
+                best_metric = val_dice
+            
             if val_loss < best_loss:
                 best_loss = val_loss
-                best_metric_epoch = epoch + 1
+                best_loss_epoch = epoch + 1
                 torch.save(model.state_dict(), os.path.join(args.path_save, "Best_model_finetuning.pth"))
                 print("saved new best metric model")
-            print(f"current epoch: {epoch + 1} current mean dice: {val_dice:.4f}"
-                  f"\nbest mean dice: {best_metric:.4f} at epoch: {best_metric_epoch}"
+            print(f"current epoch: {epoch + 1}\n"
+                  f"current val dice {val_dice:.4f}\n" 
+                  f"current val_loss: {val_loss:.4f}\n"
+                  f"best val_dice: {val_dice:.4f} at epoch {best_metric_epoch}\n"
+                  f"best val loss: {best_loss:.4f} at epoch: {best_loss_epoch}"
                   )
             
         plot_history(epoch_loss_values, val_loss_values, lrs, metric_values, 

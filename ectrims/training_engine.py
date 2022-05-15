@@ -11,29 +11,30 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 from torch import nn
+from monai.metrics import compute_meandice
 
-def compute_meandice(y_pred, y):
-    device = y_pred.device
-    if y_pred.size() != y.size():
-        raise ValueError(f"prediction {y_pred.size()}, target {y.size()}")
-    if y_pred.dim() != 5 or y.dim() != 5:
-        raise ValueError(f"Exprect five dims, prediction {y_pred.size()}, target {y.size()}")
-    # if np.isin(y_pred.unique().cpu().numpy(), [0, 1]):
-    #     raise ValueError(f"y_pred should be OHE, got values {y_pred.unique()}")
-    # if np.isin(y.unique().cpu().numpy(), [0, 1]):
-    #     raise ValueError(f"y should be OHE, got values {y.unique()}")
+# def compute_meandice(y_pred, y):
+#     device = y_pred.device
+#     if y_pred.size() != y.size():
+#         raise ValueError(f"prediction {y_pred.size()}, target {y.size()}")
+#     if y_pred.dim() != 5 or y.dim() != 5:
+#         raise ValueError(f"Exprect five dims, prediction {y_pred.size()}, target {y.size()}")
+#     # if np.isin(y_pred.unique().cpu().numpy(), [0, 1]):
+#     #     raise ValueError(f"y_pred should be OHE, got values {y_pred.unique()}")
+#     # if np.isin(y.unique().cpu().numpy(), [0, 1]):
+#     #     raise ValueError(f"y should be OHE, got values {y.unique()}")
         
-    b = y.size(0)
+#     b = y.size(0)
     
-    mean_dice = torch.tensor(0.0, device=device)
-    for i_b in range(b):
-        denominator = y_pred[i_b].sum() + y[i_b].sum()
-        intersec = torch.sum(y_pred[i_b] * y[i_b])
-        if denominator == torch.tensor(0.0, device=device):
-            mean_dice += torch.tensor(1.0, device=device)
-        else:
-            mean_dice += 2.0 * intersec / denominator
-    return mean_dice / b
+#     mean_dice = torch.tensor(0.0, device=device)
+#     for i_b in range(b):
+#         denominator = y_pred[i_b].sum() + y[i_b].sum()
+#         intersec = torch.sum(y_pred[i_b] * y[i_b])
+#         if denominator == torch.tensor(0.0, device=device):
+#             mean_dice += torch.tensor(1.0, device=device)
+#         else:
+#             mean_dice += 2.0 * intersec / denominator
+#     return mean_dice / b
 
 def print_tensor_summary(t, name):
     print('Name: ', name)
@@ -62,10 +63,15 @@ def validation(model, act, val_loader, loss_function, device, thresh, only_loss=
             roi_size = (96, 96, 96)
             sw_batch_size = 4
             val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model, mode='gaussian')
+            
+            weight = (val_labels == 2).type(torch.FloatTensor) * 1e6 + (val_labels == 2).type(torch.FloatTensor) * 3e3 + 1
+            weight = weight.to(device)
+            loss_function = torch.nn.BCEWithLogitsLoss(weight=weight)
+            val_labels = (val_labels != 0).type(torch.FloatTensor).to(device)
 
-            val_labels = torch.stack([
-            (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
-            ], dim=1).to(device)
+            # val_labels = torch.stack([
+            # (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
+            # ], dim=1).to(device)
             
             loss_sum += loss_function(val_outputs, val_labels).item()
             
@@ -199,9 +205,15 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
             outputs = model(inputs)
 
             # Dice loss
-            labels = torch.stack([
-                (labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
-                ], dim=1).to(device)
+            weight = (labels == 2).type(torch.FloatTensor) * 1e6 + (labels == 1).type(torch.FloatTensor) * 3e3 + 1
+            weight = weight.to(device)
+            loss_function = torch.nn.BCEWithLogitsLoss(weight=weight)
+            labels = (labels != 0).type(torch.FloatTensor).to(device)
+            
+            # labels = torch.stack([
+            #     (labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
+            #     ], dim=1).to(device)
+            
             loss = loss_function(outputs, labels)
 
             loss.backward()
@@ -210,10 +222,10 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
             epoch_loss += loss.item()
             if step % 100 == 0:
                 step_print = int(step / 2)
-                val_loss, val_metric = validation(model, act, val_loader, loss_function, device, thresh, only_loss=False)
+                val_loss = validation(model, act, val_loader, loss_function, device, thresh, only_loss=True)
                 print(
-                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}"
-                    f"\nval_loss {val_loss:.4f}"
+                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}, "
+                    f"val_loss {val_loss:.4f}"
                     )
     lr = optimizer.param_groups[0]["lr"]
     scheduler.step()
