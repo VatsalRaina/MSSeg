@@ -48,7 +48,7 @@ def init_weights(unet):
             nn.init.xavier_normal_(layer.weight, gain=1.0)
     return unet
             
-def validation(model, act, val_loader, loss_function, device, thresh, only_loss=False):
+def validation(model, act, val_loader, loss_function, device, thresh, only_loss=False, multi_class=True):
     model.eval()
     with torch.no_grad():
         if not only_loss:
@@ -64,36 +64,7 @@ def validation(model, act, val_loader, loss_function, device, thresh, only_loss=
             sw_batch_size = 4
             val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model, mode='gaussian')
             
-            # weight = (val_labels == 2).type(torch.FloatTensor) * 1e6 + (val_labels ==1).type(torch.FloatTensor) * 3e3 + 1
-            # weight = weight.to(device)
-            # loss_function = torch.nn.BCEWithLogitsLoss(weight=weight)
-            # val_labels = (val_labels != 0).type(torch.FloatTensor).to(device)
-
-            # val_labels = torch.stack([
-            # (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
-            # ], dim=1).to(device)
-            
-            # val_labels = torch.stack([
-            #     (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
-            #     ], dim=1).to(device)
-            bg_loss = torch.nn.BCEWithLogitsLoss(reduction='none')(val_outputs[:, 0:1, :, :, :], 
-                                                   (val_labels == 0).type(torch.FloatTensor).to(device))
-            cl_loss = torch.nn.BCEWithLogitsLoss(reduction='none')(val_outputs[:, 2:3, :, :, :], 
-                                                   (val_labels == 2).type(torch.FloatTensor).to(device))
-            wm_loss = torch.nn.BCEWithLogitsLoss(reduction='none')(val_outputs[:, 1:2, :, :, :], 
-                                                   (val_labels == 1).type(torch.FloatTensor).to(device))
-            # print(cl_loss, wm_loss)
-            # loss_sum += (cl_loss * 5 + wm_loss + bg_loss).item()
-            
-            # loss_sum += loss_function(val_outputs, val_labels).item()
-            
-            # gamma = torch.tensor(0.1, device=device)
-            # cl_loss = torch.pow(1-torch.exp(-cl_loss), gamma) * cl_loss
-            # wm_loss = torch.pow(1-torch.exp(-wm_loss), gamma) * wm_loss
-            # bg_loss = torch.pow(1-torch.exp(-bg_loss), gamma) * bg_loss
-                   
-            cl_w = torch.tensor(5.0, device = device)
-            loss_sum += torch.sum(cl_loss * cl_w + wm_loss + bg_loss, [1, 2, 3, 4]).mean().item()
+            loss_sum += loss_function(val_outputs, val_labels, device).item()
 
             metric_count += 1
             if not only_loss:
@@ -101,15 +72,62 @@ def validation(model, act, val_loader, loss_function, device, thresh, only_loss=
                 val_outputs[val_outputs >= thresh] = 1.
                 val_outputs[val_outputs < thresh] = 0.
                 
-                val_labels = torch.stack([
-                    (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [0, 1, 2]
-                    ], dim=1).to(device)
+                if multi_class:
+                    val_labels = torch.stack([
+                        (val_labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [0, 1, 2]
+                        ], dim=1).to(device)
+                else:
+                    val_labels = (val_labels != 0.0).type(torch.FloatTensor).to(device)
                 
                 metric_sum += compute_meandice(val_outputs, val_labels).mean().item()
     model.train(True)
     if only_loss:          
         return loss_sum / metric_count
     return loss_sum / metric_count, metric_sum / metric_count
+
+
+def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh, multi_class):
+    model.train(True)
+    epoch_loss = 0
+    # epoch_loss = {'total': 0.0, 'cl_loss': 0.0, 'wm_loss': 0.0, 'bg_loss': 0.0}
+    step = 0
+    print(f"Learning rate: {optimizer.param_groups[0]['lr']}")
+    for batch_data in train_loader:
+        n_samples = batch_data["image"].size(0)
+        for m in range(0, batch_data["image"].size(0), 2):
+            step += 2
+            inputs, labels = (
+                batch_data["image"][m:(m + 2)].to(device),
+                batch_data["label"][m:(m + 2)])
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            
+            loss= loss_function(outputs, labels, device)
+
+            loss.backward()
+            optimizer.step()
+
+            # epoch_loss['total'] += loss.item()
+            # epoch_loss['cl_loss'] += 5.0 * torch.mean(cl_loss, [1, 2, 3, 4]).mean().item()
+            # epoch_loss['wm_loss'] += torch.mean(wm_loss, [1, 2, 3, 4]).mean().item()
+            # epoch_loss['bg_loss'] += torch.mean(bg_loss, [1, 2, 3, 4]).mean().item()
+            epoch_loss += loss.item()
+            if step % 100 == 0:
+                step_print = int(step / 2)
+                val_loss = validation(model, act, val_loader, loss_function, device, thresh, only_loss=True, multi_class=multi_class)
+                # print(val_loss, loss)
+                print(
+                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}", " train_loss: {:.4f}, ".format(loss.item()),
+                    "val_loss {:.4f}".format(val_loss)
+                    )
+    lr = optimizer.param_groups[0]["lr"]
+    if scheduler is not None:
+        scheduler.step()
+    epoch_loss /= step_print
+    # for key, val in epoch_loss.items():
+    #     epoch_loss[key] = val / step_print
+    
+    return lr, epoch_loss
 
 
 def validation_one_class(model, act, val_loader, loss_function, device, thresh, only_loss=False):
@@ -212,79 +230,6 @@ def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_func
     
     return model, lr , epoch_loss, np.mean(epoch_loss_val), optimizer, scheduler
     '''
-
-def train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh):
-    model.train(True)
-    # epoch_loss = 0
-    epoch_loss = {'total': 0.0, 'cl_loss': 0.0, 'wm_loss': 0.0, 'bg_loss': 0.0}
-    step = 0
-    print(f"Learning rate: {optimizer.param_groups[0]['lr']}")
-    for batch_data in train_loader:
-        n_samples = batch_data["image"].size(0)
-        for m in range(0, batch_data["image"].size(0), 2):
-            step += 2
-            inputs, labels = (
-                batch_data["image"][m:(m + 2)].to(device),
-                batch_data["label"][m:(m + 2)])
-            optimizer.zero_grad()
-            outputs = model(inputs)
-
-            # weight = (labels == 2).type(torch.FloatTensor) * 1e6 + (labels == 1).type(torch.FloatTensor) * 3e3 + 1
-            # weight = weight.to(device)
-            # loss_function = torch.nn.BCEWithLogitsLoss(weight=weight)
-            # labels = (labels != 0).type(torch.FloatTensor).to(device)
-            
-            # labels = torch.stack([
-            #     (labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
-            #     ], dim=1).to(device)
-            
-            # labels = torch.stack([
-            #     (labels[:,0,:,:,:] == i).type(torch.LongTensor) for i in [1, 2]
-            #     ], dim=1).to(device)
-            bg_loss = torch.nn.BCEWithLogitsLoss(reduction='none')(outputs[:, 0:1, :, :, :],
-                                                   (labels == 0).type(torch.FloatTensor).to(device))
-            cl_loss = torch.nn.BCEWithLogitsLoss(reduction='none')(outputs[:, 2:3, :, :, :],
-                                                   (labels == 2).type(torch.FloatTensor).to(device))
-            wm_loss = torch.nn.BCEWithLogitsLoss(reduction='none')(outputs[:, 1:2, :, :, :],
-                                                   (labels == 1).type(torch.FloatTensor).to(device))
-            # print('bg', bg_loss.item(), 'cl', cl_loss.item(), 'wm', wm_loss.item())
-            # loss = cl_loss * 5 + wm_loss + bg_loss
-            
-            # loss = loss_function(outputs, labels)
-            
-            # gamma = torch.tensor(0.1, device=device)
-            # cl_loss = torch.pow(1-torch.exp(-cl_loss), gamma) * cl_loss
-            # wm_loss = torch.pow(1-torch.exp(-wm_loss), gamma) * wm_loss
-            # bg_loss = torch.pow(1-torch.exp(-bg_loss), gamma) * bg_loss
-                   
-            cl_w = torch.tensor(5.0, device = device)
-            loss_sum = cl_loss * cl_w + wm_loss + bg_loss
-        
-            loss = torch.sum(loss_sum, [1, 2, 3, 4]).mean()
-
-            loss.backward()
-            optimizer.step()
-
-            epoch_loss['total'] += loss.item()
-            epoch_loss['cl_loss'] += 5.0 * torch.mean(cl_loss, [1, 2, 3, 4]).mean().item()
-            epoch_loss['wm_loss'] += torch.mean(wm_loss, [1, 2, 3, 4]).mean().item()
-            epoch_loss['bg_loss'] += torch.mean(bg_loss, [1, 2, 3, 4]).mean().item()
-            if step % 100 == 0:
-                step_print = int(step / 2)
-                val_loss = validation(model, act, val_loader, loss_function, device, thresh, only_loss=True)
-                # print(val_loss, loss)
-                print(
-                    f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}", " train_loss: {:.4f}, ".format(loss.item()),
-                    "val_loss {:.4f}".format(val_loss)
-                    )
-    lr = optimizer.param_groups[0]["lr"]
-    scheduler.step()
-    # epoch_loss /= step_print
-    for key, val in epoch_loss.items():
-        epoch_loss[key] = val / step_print
-    
-    return lr, epoch_loss
-
 
 def train_one_epoch_one_class(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh):
     model.train(True)

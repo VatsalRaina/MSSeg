@@ -15,6 +15,7 @@ import numpy as np
 import random
 from data_loader import train_transforms, val_transforms, get_data_loader
 from training_engine import *
+from losses import GeneralizedLoss
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -54,6 +55,8 @@ parser.add_argument('--n_epochs', type=int, default=200, help='Specify the numbe
 # model
 parser.add_argument('--seed', type=int, default=1, help='Specify the global random seed')
 parser.add_argument('--threshold', type=float, default=0.4, help='Threshold for lesion detection')
+parser.add_argument('--multi_class', action='store_true', help='If 3 classes, otherwise 1')
+# parser.add_argument('--loss', type='str', help='If 3 classes, otherwise 1')
 # data
 parser.add_argument('--path_train', type=str, required=True, help='Specify the path to the train data directory')
 parser.add_argument('--path_val', type=str, default='', help='Specify the path to the val data directory')
@@ -84,11 +87,12 @@ def main(args):
     np.random.seed(seed_val)
     torch.manual_seed(seed_val)
     torch.cuda.manual_seed_all(seed_val)
+    val_transforms_seed = val_transforms.set_random_state(seed=seed_val)
+    train_transforms_seed = train_transforms.set_random_state(seed=seed_val)
 
     ''' Choose device'''
     device = get_default_device()
-    val_transforms_seed = val_transforms.set_random_state(seed=seed_val)
-    train_transforms_seed = train_transforms.set_random_state(seed=seed_val)
+    
 
     ''' Dataloader '''
     train_loader = get_data_loader(path_flair=args.path_train,
@@ -123,7 +127,7 @@ def main(args):
     model = UNet(
         spatial_dims=3,
         in_channels=2,
-        out_channels=3,
+        out_channels=3 if args.multi_class else 1,
         channels=(32, 64, 128, 256, 512),
         strides=(2, 2, 2, 2),
         num_res_units=0)
@@ -141,14 +145,15 @@ def main(args):
     # loss_function = FocalLoss(include_background=True, to_onehot_y=False, 
     #                           gamma=0.1, weight=torch.Tensor([1., 10.]), 
     #                           reduction='mean')
-    loss_function = torch.nn.BCEWithLogitsLoss()
+    loss_function = GeneralizedLoss(loss_name='BCEWL_one_class', loss_one_class=None, loss_per_class=None)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
     # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=1e-4, 
     #                                               max_lr=5e-3,step_size_up=3,
     #                                               cycle_momentum=False,
     #                                               mode="triangular2")
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
+    scheduler = None
     # Load trained model
     # model.load_state_dict(torch.load(os.path.join(root_dir, "Initial_model.pth")))
 
@@ -171,7 +176,7 @@ def main(args):
     
     # early stopping params
     patience = 6    # stop training if val loss did not improve during several epochs
-    tolerance = 1e-6
+    tolerance = 1e-7
     last_loss = np.inf
     current_loss = 0.0
     silence_epochs = 0.0
@@ -179,15 +184,17 @@ def main(args):
     for epoch in range(epoch_num):
         print("-" * 10)
         print(f"epoch {epoch + 1}/{epoch_num}")
-        lr , epoch_loss=train_one_epoch(model, train_loader, device, optimizer, scheduler, loss_function, epoch, act, val_loader, thresh)
+        lr , epoch_loss=train_one_epoch(model, train_loader, device, optimizer, 
+                                        scheduler, loss_function, epoch, act, 
+                                        val_loader, thresh, multi_class=args.multi_class)
         lrs.append(lr)
         # epoch_loss_values.append(epoch_loss)
-        epoch_loss_values.append(epoch_loss['total'])
-        epoch_loss_values_df = epoch_loss_values_df.append(epoch_loss, ignore_index=True)
-        print(f"epoch {epoch + 1} average train loss: {epoch_loss['total']:.4f}")
+        epoch_loss_values.append(epoch_loss)
+        # epoch_loss_values_df = epoch_loss_values_df.append(epoch_loss, ignore_index=True)
+        print(f"epoch {epoch + 1} average train loss: {epoch_loss:.4f}")
         
         # early stopping
-        current_loss = validation(model, act, val_loader, loss_function, device, thresh, only_loss=True)
+        current_loss = validation(model, act, val_loader, loss_function, device, thresh, only_loss=True, multi_class=args.multi_class)
         if current_loss > last_loss or abs(current_loss - last_loss) < tolerance:
             silence_epochs += 1
             if silence_epochs > patience:
@@ -195,14 +202,19 @@ def main(args):
                 break
         else:
             last_loss = current_loss
+            silence_epochs = 0
             
         # validation
         if (epoch + 1) % val_interval == 0:
-            val_loss, val_dice = validation(model, act, val_loader, loss_function, device, thresh, only_loss=False)
+            val_loss, val_dice = validation(model, act, val_loader, loss_function, 
+                                            device, thresh, only_loss=False, 
+                                            multi_class=args.multi_class)
             metric_values.append(val_dice)
             val_loss_values.append(val_loss)
             
-            train_loss, train_dice = validation(model, act, val_train_loader, loss_function, device, thresh, only_loss=False)
+            train_loss, train_dice = validation(model, act, val_train_loader, 
+                                                loss_function, device, thresh, only_loss=False, 
+                                                multi_class=args.multi_class)
             metric_values_train.append(train_dice)
             
             if val_dice > best_metric: 
@@ -224,15 +236,15 @@ def main(args):
         plot_history(epoch_loss_values, val_loss_values, lrs, metric_values, 
                      metric_values_train, val_interval, save_path)
         
-        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-        for col in epoch_loss_values_df.columns:
-            ax.plot(epoch_loss_values_df[col], label=col)
-        ax.set_title('Losses on training')
-        ax.set_xlabel('steps')
-        ax.legend()
-        plt.show()
-        fig.savefig(os.path.join(save_path, 'cl_wm_bg_loss.png'))
-        plt.close(fig)
+        # fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        # for col in epoch_loss_values_df.columns:
+        #     ax.plot(epoch_loss_values_df[col], label=col)
+        # ax.set_title('Losses on training')
+        # ax.set_xlabel('steps')
+        # ax.legend()
+        # plt.show()
+        # fig.savefig(os.path.join(save_path, 'cl_wm_bg_loss.png'))
+        # plt.close(fig)
             # %%
 
 
