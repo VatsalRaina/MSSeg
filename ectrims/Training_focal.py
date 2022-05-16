@@ -147,12 +147,12 @@ def main(args):
     #                           reduction='mean')
     loss_function = GeneralizedLoss(loss_name='BCEWL_one_class', loss_one_class=None, loss_per_class=None)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=1e-4, 
     #                                               max_lr=5e-3,step_size_up=3,
     #                                               cycle_momentum=False,
     #                                               mode="triangular2")
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
     # scheduler = None
     # Load trained model
     # model.load_state_dict(torch.load(os.path.join(root_dir, "Initial_model.pth")))
