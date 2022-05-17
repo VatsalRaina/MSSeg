@@ -19,7 +19,8 @@
 source activate msseg
 cd /data/bach/MultipleSclerosis/nataliia/MSSeg/ectrims
 
-srun python /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/Training_focal.py \
+srun python /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/Training_cl_masking.py \
+--learning_rate 5e-4 \
 --n_epochs 200 \
 --seed 3 \
 --threshold 0.4 \
@@ -30,4 +31,4 @@ srun python /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/Training_f
 --gts_prefix wm_cl_lesions.nii.gz \
 --check_dataset \
 --num_workers 8 \
---path_save /data/bach/MultipleSclerosis/nataliia/MSSeg/ectrims/balanced_training/seed3
+--path_save /data/bach/MultipleSclerosis/nataliia/MSSeg/ectrims/cl_mask_training/seed3

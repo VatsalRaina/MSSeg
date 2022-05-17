@@ -2,7 +2,7 @@
 #SBATCH --job-name insider_seed1
 #SBATCH --account rad
 #SBATCH --partition rad
-#SBATCH --gres=gpu:v100:1
+#SBATCH --gres=gpu:1
 #SBATCH --mem-per-cpu=32000
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-core=1
@@ -19,7 +19,8 @@
 source activate msseg
 cd /data/bach/MultipleSclerosis/nataliia/MSSeg/ectrims
 
-srun python /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/Training_focal.py \
+srun python /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/Training_cl_masking.py \
+--learning_rate 5e-4 \
 --n_epochs 200 \
 --seed 1 \
 --threshold 0.4 \
@@ -27,7 +28,9 @@ srun python /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/Training_f
 --path_val /data/bach/MultipleSclerosis/nataliia/MSSeg/data/insider/dataset/val \
 --flair_prefix FLAIR.nii.gz \
 --mp2rage_prefix UNIT1.nii.gz \
---gts_prefix wm_cl_lesions.nii.gz \
+--gts_prefix all_lesions.nii.gz \
 --check_dataset \
 --num_workers 8 \
---path_save /data/bach/MultipleSclerosis/nataliia/MSSeg/ectrims/balanced_training/seed1
+--path_save /data/bach/MultipleSclerosis/nataliia/MSSeg/ectrims/cl_mask_training/seed1
+
+# cp /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/cluster/cluster_train_seed1.sh /data/bach/MultipleSclerosis/nataliia/MSSeg/ectrims/fixed_training/seed1/cluster_train_seed1.sh
