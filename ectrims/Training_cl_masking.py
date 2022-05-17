@@ -184,12 +184,12 @@ def main(args):
                 # Dice loss
                 loss1 = loss_function(outputs, labels)
                 
-                n_cl = cl_mask.sum()
-                n_wml = labels.sum()
-                if n_cl.item() != 0.0:
-                    frac = (n_wml / n_cl).item()
-                else:
-                    frac = 0.0
+                # n_cl = cl_mask.sum()
+                # n_wml = labels.sum()
+                # if n_cl.item() != 0.0:
+                #     frac = (n_wml / n_cl).item()
+                # else:
+                #     frac = 0.0
                 weights = ((((cl_mask * 10)+labels)*5)+1)
 
                 # Focal loss
@@ -227,12 +227,12 @@ def main(args):
                             
                             loss1 = loss_function(val_outputs, val_labels)
                             
-                            n_cl = val_mask_cl.sum()
-                            n_wml = val_labels.sum()
-                            if n_cl.item() != 0.0:
-                                frac = (n_wml / n_cl).item()
-                            else:
-                                frac = 0.0
+                            # n_cl = val_mask_cl.sum()
+                            # n_wml = val_labels.sum()
+                            # if n_cl.item() != 0.0:
+                            #     frac = (n_wml / n_cl).item()
+                            # else:
+                            #     frac = 0.0
                             weights = ((((val_mask_cl*10)+val_labels)*5)+1)
 
                             # Focal loss
