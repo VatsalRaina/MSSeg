@@ -28,7 +28,7 @@ srun python /data/bach/MultipleSclerosis/nataliia/MSSeg/MSSeg/ectrims/Training_c
 --path_val /data/bach/MultipleSclerosis/nataliia/MSSeg/data/insider/dataset/val \
 --flair_prefix FLAIR.nii.gz \
 --mp2rage_prefix UNIT1.nii.gz \
---gts_prefix wm_cl_lesions.nii.gz \
+--gts_prefix all_lesions.nii.gz \
 --check_dataset \
 --num_workers 8 \
 --path_save /data/bach/MultipleSclerosis/nataliia/MSSeg/ectrims/cl_mask_training/seed3
