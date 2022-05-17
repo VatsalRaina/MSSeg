@@ -107,7 +107,7 @@ def main(args):
                                    gts_prefix=args.gts_prefix,
                                    transforms=train_transforms_seed,
                                    num_workers=args.num_workers,
-                                   batch_size=1, cache_rate=0.1)
+                                   batch_size=1, cache_rate=0.5)
     val_loader = get_data_loader_with_cl(path_flair=args.path_val,
                                  path_mp2rage=args.path_val,
                                  path_gts=args.path_val,
@@ -116,7 +116,7 @@ def main(args):
                                  gts_prefix=args.gts_prefix,
                                  transforms=val_transforms_seed,
                                  num_workers=args.num_workers,
-                                 batch_size=1, cache_rate=0.1)
+                                 batch_size=1, cache_rate=0.5)
     val_train_loader = get_data_loader_with_cl(path_flair=args.path_train,
                                    path_mp2rage=args.path_train,
                                    path_gts=args.path_train,
@@ -125,7 +125,7 @@ def main(args):
                                    gts_prefix=args.gts_prefix,
                                    transforms=val_transforms_seed,
                                    num_workers=args.num_workers,
-                                   batch_size=1, cache_rate=0.1)
+                                   batch_size=1, cache_rate=0.5)
 
     ''' Init model '''
     model = UNet(
@@ -146,7 +146,7 @@ def main(args):
     # model.load_state_dict(torch.load(os.path.join(root_dir, "Initial_model.pth")))
 
     epoch_num = args.n_epochs
-    val_interval = 1
+    val_interval = 2
     best_metric = -1
     best_metric_epoch = -1
     epoch_loss_values = list()
@@ -281,7 +281,8 @@ def main(args):
         epoch_loss /= step_print
         epoch_loss_values.append(epoch_loss)
         lrs.append(optimizer.param_groups[0]["lr"])
-        scheduler.step()
+        if lrs[-1] > 1e-5:
+            scheduler.step()
         print(f"epoch {epoch + 1} average loss: {epoch_loss:.4f}")
 
         if (epoch + 1) % val_interval == 0:
