@@ -362,7 +362,7 @@ def main(args):
                 # plt.show()
                 
                 steps = [i * (epoch + 1) / len(val_loss_plot['val_loss']) for i in range(1, len(val_loss_plot['val_loss']) + 1)]
-                for i_l,l in enumerate(['loss', 'loss1', 'loss2']):
+                for i_l,l in enumerate(['loss', 'loss1', 'loss2', 'metric']):
                     val_ax[i_l].cla()
                     for t in ['train_', 'val_']:
                         n = t + l
