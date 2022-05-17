@@ -144,7 +144,7 @@ def main(args):
     # model.load_state_dict(torch.load(os.path.join(root_dir, "Initial_model.pth")))
 
     epoch_num = args.n_epochs
-    val_interval = 5
+    val_interval = 1
     best_metric = -1
     best_metric_epoch = -1
     epoch_loss_values = list()
@@ -186,10 +186,50 @@ def main(args):
                 optimizer.step()
 
                 epoch_loss += loss.item()
-                if step % 100 == 0:
+                if step % 200 == 0:
                     step_print = int(step / 2)
+                    model.eval()
+                    with torch.no_grad():
+                        metric_sum = 0.0
+                        metric_count = 0
+                        for val_data in val_loader:
+                            val_inputs, val_labels = (
+                                val_data["image"].to(device),
+                                val_data["label"].to(device),
+                            )
+                            roi_size = (96, 96, 96)
+                            sw_batch_size = 4
+                            val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model, mode='gaussian')
+                            
+                            loss1 = loss_function(val_outputs, val_labels)
+
+                            # Focal loss
+                            ce_loss = nn.CrossEntropyLoss(reduction='none')
+                            ce = ce_loss(outputs, torch.squeeze(labels, dim=1))
+                            gamma = 2.0
+                            pt = torch.exp(-ce)
+                            f_loss = 1 * (1 - pt) ** gamma * ce
+                            loss2 = f_loss
+                            loss2 = torch.mean(loss2)
+                            loss = 0.5 * loss1 + loss2
+        
+                            val_labels = val_labels.cpu().numpy()
+                            gt = np.squeeze(val_labels)
+                            val_outputs = act(val_outputs).cpu().numpy()
+                            seg = np.squeeze(val_outputs[0, 1])
+                            seg[seg > thresh] = 1
+                            seg[seg < thresh] = 0
+                            value = (np.sum(seg[gt == 1]) * 2.0) / (np.sum(seg) + np.sum(gt))
+        
+                            metric_count += 1
+                            metric_sum += value.sum().item()
+                        val_metric = metric_sum / metric_count
+                        val_loss = loss.item()
+                    model.train(True)
                     print(
-                        f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}")
+                        f"{step_print}/{(len(train_loader) * n_samples) // (train_loader.batch_size * 2)}, train_loss: {loss.item():.4f}, "
+                        f"val_loss: {val_loss:.4f}, val_metric: {val_metric:.4f}"
+                        )
 
         epoch_loss /= step_print
         epoch_loss_values.append(epoch_loss)
