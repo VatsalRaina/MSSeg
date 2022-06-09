@@ -27,9 +27,9 @@ def main(args):
     with open(args.path_load3, 'rb') as f:
         dsc_norm_scores3 = np.load(f)
 
-    plt.plot(fracs_retained, dsc_norm_scores1, label=r'Eval$_{in}$')
+    plt.plot(fracs_retained, dsc_norm_scores1, label=r'Evl$_{in}$')
     plt.plot(fracs_retained, dsc_norm_scores2, label=r'Dev$_{out}$')
-    plt.plot(fracs_retained, dsc_norm_scores3, label=r'Eval$_out}$')
+    plt.plot(fracs_retained, dsc_norm_scores3, label=r'Evl$_{out}$')
     plt.xlabel("Retention Fraction")
     plt.ylabel("nDSC")
     plt.xlim([0.0,1.01])
