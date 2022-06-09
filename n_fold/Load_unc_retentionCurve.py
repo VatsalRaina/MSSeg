@@ -28,8 +28,8 @@ def main(args):
         dsc_norm_scores3 = np.load(f)
 
     plt.plot(fracs_retained, dsc_norm_scores1, label=r'\text{Eval}_{\text{in}}')
-    plt.plot(fracs_retained, dsc_norm_scores2, label=r'\text{Dev}_{\text{out}}")
-    plt.plot(fracs_retained, dsc_norm_scores3, label=r'\text{Eval}_{\text{out}}")
+    plt.plot(fracs_retained, dsc_norm_scores2, label=r'\text{Dev}_{\text{out}}')
+    plt.plot(fracs_retained, dsc_norm_scores3, label=r'\text{Eval}_{\text{out}}')
     plt.xlabel("Retention Fraction")
     plt.ylabel("nDSC")
     plt.xlim([0.0,1.01])
