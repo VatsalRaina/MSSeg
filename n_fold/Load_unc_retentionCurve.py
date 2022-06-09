@@ -27,11 +27,11 @@ def main(args):
     with open(args.path_load3, 'rb') as f:
         dsc_norm_scores3 = np.load(f)
 
-    plt.plot(fracs_retained, dsc_norm_scores1, label="In")
-    plt.plot(fracs_retained, dsc_norm_scores2, label="Out")
-    plt.plot(fracs_retained, dsc_norm_scores3, label="Lausanne")
+    plt.plot(fracs_retained, dsc_norm_scores1, label="Eval-in")
+    plt.plot(fracs_retained, dsc_norm_scores2, label="Dev-out")
+    plt.plot(fracs_retained, dsc_norm_scores3, label="Eval-out")
     plt.xlabel("Retention Fraction")
-    plt.ylabel(r"$\overline{DSC}$")
+    plt.ylabel("nDSC")
     plt.xlim([0.0,1.01])
     plt.legend()
     plt.savefig('unc_ret_dsc_norm.png')
