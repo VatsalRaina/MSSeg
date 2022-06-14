@@ -127,9 +127,9 @@ def main(args):
     r = 0.001
 
     all_gts = []
-    all_models = {}
+    all_model_preds = {}
     for i in range(K):
-        all_models[i+1] = []
+        all_model_preds[i+1] = []
 
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
@@ -145,7 +145,7 @@ def main(args):
                 outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
                 outputs = act(outputs).cpu().numpy()
                 outputs = np.squeeze(outputs[0,1])
-                all_models[i+1].append(outputs)
+                all_model_preds[i+1].append(outputs)
                 all_outputs.append(outputs)
             all_outputs = np.asarray(all_outputs)
             outputs = np.mean(all_outputs, axis=0)
@@ -166,7 +166,7 @@ def main(args):
                 np.save(f, gt)
         for i in range(K):
             os.mkdir(args.path_save + 'model' + str(i+1))
-            for p, probs in enumerate(all_outputs[i+1]):
+            for p, probs in enumerate(all_model_preds[i+1]):
                 with open(args.path_save + 'model' + str(i+1) + '/' + str(p+1) + '.npy', 'wb') as f:
                     np.save(f, probs)
 
