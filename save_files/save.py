@@ -232,7 +232,7 @@ def main(args):
             os.mkdir(args.path_save + 'model' + str(i+1))
             for p, probs in enumerate(all_outputs[i+1]):
                 with open(args.path_save + 'model' + str(i+1) + '/' + str(p+1) + '.npy', 'wb') as f:
-                    np.save(f, gt)
+                    np.save(f, probs)
 
 #%%
 if __name__ == "__main__":
