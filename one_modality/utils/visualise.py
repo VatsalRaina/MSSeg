@@ -73,6 +73,8 @@ def plot_iqr_median_rc(metric_norm, fracs_ret, save_path):
 
     plt.fill_between(fracs_ret, q1, q3, color='gray', alpha=0.2, label='IQR')
     plt.xlim([0, 1.01])
+    plt.xlabel("Retention fraction")
+    plt.ylabel("F1 lesion-scale")
     plt.legend()
     plt.savefig(save_path)
     plt.clf()
@@ -86,5 +88,7 @@ def plot_mean_rc(metric_norm, fracs_ret, save_path):
 
     plt.xlim([0, 1.01])
     plt.legend()
+    plt.xlabel("Retention fraction")
+    plt.ylabel("F1 lesion-scale")
     plt.savefig(save_path)
     plt.clf()

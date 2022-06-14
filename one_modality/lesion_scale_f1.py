@@ -5,7 +5,7 @@
          
          
          
-debugfile('/home/meri/Code/MSSeg/one_modality/lesion_scale_f1.py', wdir='/home/meri/Code/MSSeg/one_modality', args='--threshold 0.35 --num_models 5 --path_data /home/meri/data/canonical/dev_in --path_gts /home/meri/data/canonical/dev_in --path_model /home/meri/uncertainty_challenge/models_cv/ex_ljubljana/ --path_save /home/meri/uncertainty_challenge/results/f1_lesion_score/ --flair_prefix FLAIR.nii.gz --gts_prefix gt.nii --check_dataset --n_jobs 10 --num_workers 10 --IoU_threshold 0.25')
+debugfile('/home/meri/Code/MSSeg/one_modality/lesion_scale_f1.py', wdir='/home/meri/Code/MSSeg/one_modality', args='--threshold 0.35 --num_models 5 --path_data /home/meri/data/canonical/dev_in --path_gts /home/meri/data/canonical/dev_in --path_model /home/meri/uncertainty_challenge/models_cv/ex_ljubljana/ --path_save /home/meri/uncertainty_challenge/results/f1_lesion_score/ --flair_prefix FLAIR.nii.gz --gts_prefix gt.nii --check_dataset --n_jobs 10 --num_workers 10 --IoU_threshold 0.5')
 """
 
 import argparse
@@ -116,7 +116,7 @@ def main(args):
             outputs_mean[outputs_mean > args.threshold] = 1
             outputs_mean[outputs_mean < args.threshold] = 0
             seg = np.squeeze(outputs_mean)      # [H, W, D]
-            seg = remove_connected_components(segmentation=seg, l_min=9)
+            seg = remove_connected_components(segmentation=seg, l_min=3)
 
             val_labels = gt.cpu().numpy()   # [1, 1, H, W, D]
             gt = np.squeeze(val_labels)     # [H, W, D]

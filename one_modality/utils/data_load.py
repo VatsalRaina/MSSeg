@@ -3,6 +3,7 @@ import re
 from glob import glob
 from monai.data import CacheDataset, DataLoader
 from monai.transforms import (
+    CopyItemsd, Lambdad,
     AddChanneld, Compose, CropForegroundd, LoadNiftid, Orientationd, RandCropByPosNegLabeld,
     ScaleIntensityRanged, Spacingd, ToTensord, ConcatItemsd, NormalizeIntensityd, RandFlipd,
     RandRotate90d, RandShiftIntensityd, RandAffined, RandSpatialCropd, AsDiscrete, Activations)
@@ -49,6 +50,41 @@ def get_data_loader(args):
             Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
             NormalizeIntensityd(keys=["image"], nonzero=True),
             ToTensord(keys=["image", "label"]),
+        ]
+    )
+
+    val_ds = CacheDataset(data=test_files, transform=val_transforms, cache_rate=0.5, num_workers=args.num_workers)
+    return DataLoader(val_ds, batch_size=1, num_workers=args.num_workers)
+
+def get_data_loader_brain_mask(args):
+    """ Create a torch DataLoader based on the system arguments.
+    Required options in the `args`: path_data, flair_frefix, path_gts, gts_prefix, check_dataset, num_workers
+
+    """
+    flair = sorted(glob(os.path.join(args.path_data, f"*{args.flair_prefix}")),
+                   key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
+    segs = sorted(glob(os.path.join(args.path_gts, f"*{args.gts_prefix}")),
+                  key=lambda i: int(re.sub('\D', '', i)))
+    if args.check_dataset:
+        check_dataset(flair, segs, args)
+
+    print(f"Initializing the dataset. Number of subjects {len(flair)}")
+
+    test_files = [{"image": fl, "label": seg} for fl, seg in zip(flair, segs)]
+
+    val_transforms = Compose(
+        [
+            LoadNiftid(keys=["image", "label"]),
+            AddChanneld(keys=["image", "label"]),
+            CopyItemsd(keys=["image"], times=1, names=["brain_mask"]),
+            CopyItemsd(keys=["image_meta_dict"], times=1, names=["brain_mask_meta_dict"]),
+            Lambdad(keys=["brain_mask"], 
+                    func = lambda x: (x > 0.0).astype("float")),
+            Spacingd(keys=["image", "brain_mask", "label"], 
+                     pixdim=(1.0, 1.0, 1.0), 
+                     mode=("bilinear", "nearest", "nearest")),
+            NormalizeIntensityd(keys=["image"], nonzero=True),
+            ToTensord(keys=["image", "brain_mask","label"])
         ]
     )
 

@@ -4,7 +4,9 @@ from joblib import Parallel, delayed
 from functools import partial
 from scipy import ndimage
 from scipy.interpolate import interp1d
+from scipy.ndimage.morphology import binary_dilation
 from collections import Counter
+import re
 
 
 def dice_metric(ground_truth, predictions):
@@ -500,3 +502,191 @@ def get_metric_for_rc_lesion(gts, preds, uncs, IoU_threshold, fracs_retained, n_
     spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions + 1)], y=f1_values[::-1],
                                    kind='slinear', fill_value="extrapolate")
     return spline_interpolator(fracs_retained), f1_values[::-1]
+
+
+def get_lesion_rc(gts, preds, uncs, multi_uncs_mask, IoU_threshold, fracs_retained, n_jobs):
+    """
+    :type gts: numpy.ndarray [H, W, D]
+    :type preds: numpy.ndarray [H, W, D]
+    :type uncs: numpy.ndarray [H, W, D]
+    :type IoU_threshold: float
+    :type fracs_retained: numpy.ndarray [n_fr,]
+    :return:
+    :rtype:
+    """
+
+    def compute_f1(lesion_types):
+        counter = Counter(lesion_types)
+        if counter['tp'] + 0.5 * (counter['fp'] + counter['fn']) == 0.0:
+            return 0
+        return counter['tp'] / (counter['tp'] + 0.5 * (counter['fp'] + counter['fn']))
+    
+    def cc_uncertainty(uncs_map, cc_mask, uncs_type):
+        if uncs_type == 'sum':
+            return np.sum(uncs_map * cc_mask)
+        elif uncs_type == 'mean':
+            return np.sum(uncs_map * cc_mask) / np.sum(cc_mask)
+        elif uncs_type == 'logsum':
+            return np.log(np.sum(uncs_map * cc_mask))
+        elif uncs_type == 'median':
+            les = uncs_map * cc_mask
+            les = les[les != 0.0]
+            return np.median(les)
+        elif uncs_type == 'volume':
+            return np.sum(cc_mask)
+        
+    def cc_uncertainty_ext(uncs_map, cc_mask, uncs_type, uncs_multi_mask):
+        """
+        Only consider the max intersection
+        """
+        max_label = None
+        max_iou = 0.0
+        for intersec_label in np.unique(cc_mask * uncs_multi_mask):
+            if intersec_label != 0.0:
+                iou = intersection_over_union(cc_mask,
+                                              (uncs_multi_mask == intersec_label).astype("float"))
+                # print(iou)
+                if iou > max_iou:
+                    max_iou = iou
+                    max_label = intersec_label
+                    # print(max_label, iou)
+        if max_iou == 0.0:
+            return 0.0
+                    
+        max_uncs_mask = (uncs_multi_mask == max_label).astype("float")
+        
+        uncs_type_ = re.sub('_ext', '', uncs_type)
+        
+        if uncs_type_ == 'sum':
+            return np.sum(uncs_map * max_uncs_mask)
+        elif uncs_type_ == 'mean':
+            return np.sum(uncs_map * max_uncs_mask) / np.sum(max_uncs_mask)
+        elif uncs_type_ == 'logsum':
+            return np.log(np.sum(uncs_map * max_uncs_mask))
+        elif uncs_type_ == 'median':
+            les = uncs_map * max_uncs_mask
+            les = les[les != 0.0]
+            return np.median(les)
+        elif uncs_type_ == 'volume':
+            return np.sum(max_uncs_mask)
+    
+    def lesions_uncertainty(uncs_map, multi_mask, n_labels, uncs_type, 
+                            parallel):
+        cc_labels = np.arange(1, n_labels + 1)
+        process = partial(cc_uncertainty, 
+                          uncs_map=uncs_map, 
+                          uncs_type=uncs_type)
+        les_uncs_list = parallel(delayed(process)(
+            cc_mask=(multi_mask == cc_label).astype("float"))
+            for cc_label in cc_labels
+        )
+        return np.asarray(les_uncs_list)
+    
+    def lesions_uncertainty_ext(uncs_map, multi_mask, n_labels, uncs_multi_mask,
+                                uncs_type, parallel):
+        """
+        For a lesion on the multi_mask compute uncertainty based on the 
+        untersection with uncs_multi_mask
+        """
+        cc_labels = np.arange(1, n_labels + 1)  # labels on the uncs_multi_mask where 
+        process = partial(cc_uncertainty_ext, 
+                          uncs_map=uncs_map, 
+                          uncs_type=uncs_type,
+                          uncs_multi_mask=uncs_multi_mask)
+        les_uncs_list = parallel(delayed(process)(
+            cc_mask=(multi_mask == cc_label).astype("float"))
+            for cc_label in cc_labels
+        )
+        return np.asarray(les_uncs_list)
+
+    from .transforms import get_TP_FP_lesions_mask_parallel
+    
+    les_uncs_rc = {
+        'sum': None, 'mean': None, 'logsum': None, 'median': None, 'volume': None,
+    }
+    for k in list(les_uncs_rc.keys()).copy():
+        les_uncs_rc[k + '_ext'] = None
+        # les_uncs_rc[k + '_dil'] = None
+    f1_nodes = les_uncs_rc.copy()
+    
+    # (i) uncertainties within the lesion mask
+    parallel_backend = Parallel(n_jobs=n_jobs)
+    
+    tp_lesions, fp_lesions = get_TP_FP_lesions_mask_parallel(ground_truth=gts,
+                                              predictions=preds,
+                                              IoU_threshold=IoU_threshold,
+                                              mask_type='binary',
+                                              parallel_backend=parallel_backend)
+    tp_multi_mask, tp_n_labels = ndimage.label(tp_lesions)
+    fp_multi_mask, fp_n_labels = ndimage.label(fp_lesions)
+    
+    del tp_lesions, fp_lesions
+
+    for ut in les_uncs_rc.keys():
+        uncs_list = [None for _ in range(2)]  # tp, fp
+
+        if re.search('_ext', ut) is not None:
+            uncs_list[0] = lesions_uncertainty_ext(uncs_map=uncs,
+                                                   multi_mask=tp_multi_mask,
+                                                   n_labels=tp_n_labels,
+                                                   uncs_type=ut,
+                                                   # dtype=int,
+                                                   uncs_multi_mask=multi_uncs_mask,
+                                                   parallel=parallel_backend)
+        
+            uncs_list[1] = lesions_uncertainty_ext(uncs_map=uncs,
+                                                   multi_mask=fp_multi_mask,
+                                                   n_labels=fp_n_labels,
+                                                   uncs_type=ut,
+                                                   # dtype=int,
+                                                   uncs_multi_mask=multi_uncs_mask,
+                                                   parallel=parallel_backend)
+        elif re.search('_det', ut) is not None:
+            pass
+        else:
+            uncs_list[0] = lesions_uncertainty(uncs_map=uncs,
+                                                   multi_mask=tp_multi_mask,
+                                                   n_labels=tp_n_labels,
+                                                   uncs_type=ut,
+                                                   # dtype=int,
+                                                   parallel=parallel_backend)
+        
+            uncs_list[1] = lesions_uncertainty(uncs_map=uncs,
+                                                   multi_mask=fp_multi_mask,
+                                                   n_labels=fp_n_labels,
+                                                   uncs_type=ut,
+                                                   # dtype=int,
+                                                   parallel=parallel_backend)
+    
+        lesion_type_list = [np.full(shape=unc.shape, fill_value=fill)
+                            for unc, fill in zip(uncs_list, ['tp', 'fp'])
+                            if unc.size > 0]
+        uncs_list = [unc for unc in uncs_list if unc.size > 0]
+    
+        uncs_all = np.concatenate(uncs_list, axis=0)
+        lesion_type_all = np.concatenate(lesion_type_list, axis=0)
+    
+        del uncs_list, lesion_type_list
+        assert uncs_all.shape == lesion_type_all.shape
+    
+        # sort uncertainties and lesions types
+        ordering = uncs_all.argsort()
+        lesion_type_all = lesion_type_all[ordering][::-1]
+    
+        f1_values = [compute_f1(lesion_type_all)]
+    
+        # reject the most uncertain lesion
+        for i_l, lesion_type in enumerate(lesion_type_all):
+            if lesion_type == 'fp':
+                lesion_type_all[i_l] = 'tn'
+            f1_values.append(compute_f1(lesion_type_all))
+    
+        # interpolate the curve and make predictions in the retention fraction nodes
+        n_lesions = lesion_type_all.shape[0]
+        spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions + 1)], 
+                                       y=f1_values[::-1],
+                                       kind='slinear', fill_value="extrapolate")
+        les_uncs_rc[ut] = spline_interpolator(fracs_retained)
+        f1_nodes[ut] = f1_values[::-1]
+    
+    return les_uncs_rc, f1_nodes

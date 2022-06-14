@@ -86,4 +86,5 @@ def lesions_uncertainty_sum(uncs_mask, binary_mask, dtype="float32", mask_type='
             uncs_list.append(cc_unc)
             lesions.append(cc_mask)
 
-    return np.asarray(uncs_list), mask_encoding(lesion_masks_list=lesions, dtype=dtype, mask_type=mask_type)
+    return np.asarray(uncs_list), mask_encoding(lesion_masks_list=lesions, 
+                                                dtype=dtype, mask_type=mask_type)
