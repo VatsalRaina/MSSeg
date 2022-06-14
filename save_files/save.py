@@ -28,8 +28,6 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set_theme()
 
-from metrics import f1_lesion_metric
-
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.35, help='Threshold for lesion detection')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
@@ -134,12 +132,6 @@ def main(args):
         all_models[i+1] = []
 
     with torch.no_grad():
-        # dsc_sum = 0.0
-        # dsc_norm_sum = 0.0
-        # fpr_sum = 0.0
-        # fnr_sum = 0.0
-        # f1_50_sum = 0.0
-        # metric_count = 0
         for count, batch_data in enumerate(val_loader):
             print(count)
             inputs, gt  = (
@@ -166,62 +158,6 @@ def main(args):
             val_labels = gt.cpu().numpy()
             gt = np.squeeze(val_labels)
             all_gts.append(gt)
-
-        #     """
-        #     Remove connected components smaller than 10 voxels
-        #     """
-        #     l_min = 9
-        #     labeled_seg, num_labels = ndimage.label(seg)
-        #     label_list = np.unique(labeled_seg)
-        #     num_elements_by_lesion = ndimage.labeled_comprehension(seg,labeled_seg,label_list,np.sum,float, 0)
-
-        #     seg2 = np.zeros_like(seg)
-        #     for l in range(len(num_elements_by_lesion)):
-        #         if num_elements_by_lesion[l] > l_min:
-        #     # assign voxels to output
-        #             current_voxels = np.stack(np.where(labeled_seg == l), axis=1)
-        #             seg2[current_voxels[:, 0],
-        #                 current_voxels[:, 1],
-        #                 current_voxels[:, 2]] = 1
-        #     seg=np.copy(seg2) 
-
-        #     im_sum = np.sum(seg) + np.sum(gt)
-        #     if im_sum == 0:
-        #         value = 1.0
-        #         dsc_sum += value
-        #         dsc_norm_sum += value
-        #         fpr_sum += value
-        #         fnr_sum += value
-
-        #     else:
-
-        #         dsc = (np.sum(seg[gt==1])*2.0) / (np.sum(seg) + np.sum(gt))
-        #         dsc_sum += dsc.sum().item()
-        #         if np.sum(gt) == 0:
-        #             k = 1.0
-        #         else:
-        #             k = (1-r) * np.sum(gt) / ( r * ( len(gt.flatten()) - np.sum(gt) ) )
-        #         tp = np.sum(seg[gt==1])
-        #         fp = np.sum(seg[gt==0])
-        #         fn = np.sum(gt[seg==0])
-        #         fp_scaled = k * fp
-        #         dsc_norm = 2 * tp / (fp_scaled + 2 * tp + fn)
-        #         dsc_norm_sum += dsc_norm
-
-        #         fpr_sum += fp / ( len(gt.flatten()) - np.sum(gt) )
-        #         if np.sum(gt) == 0:
-        #             fnr_sum += 1.0
-        #         else:
-        #             fnr_sum += fn / np.sum(gt)
-
-        #     metric_count += 1
-        #     f1_50_sum += f1_lesion_metric(gt, seg, 0.50)
-
-
-        # dsc_norm = dsc_norm_sum / metric_count
-        # print("DSC norm:", dsc_norm)
-        # f1_50 = f1_50_sum / metric_count
-        # print("F1_50", f1_50)
 
         # Save all the files
         os.mkdir(args.path_save + 'gt')
