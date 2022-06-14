@@ -35,6 +35,8 @@ parser.add_argument('--path_data', type=str, default='', help='Specify the path 
 parser.add_argument('--path_gts', type=str, default='', help='Specify the path to the test gts directory')
 parser.add_argument('--path_model', type=str, default='', help='Specify the dir to al the trained models')
 parser.add_argument('--path_save', type=str, default='', help='Specify the path to save the segmentations')
+parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='name ending FLAIR')
+parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
 
 
 
@@ -60,10 +62,10 @@ def main(args):
 
     root_dir= args.path_model  # Path where the trained model is saved
     path_data = args.path_data  # Path where the data is
-    flair = sorted(glob(os.path.join(path_data, "*FLAIR.nii.gz")),
-                 key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs = sorted(glob(os.path.join(args.path_gts, "*gt.nii")),
-                  key=lambda i: int(re.sub('\D', '', i)))        
+    flair = sorted(glob(os.path.join(args.path_data, f"*{args.flair_prefix}")),
+                   key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
+    segs = sorted(glob(os.path.join(args.path_gts, f"*{args.gts_prefix}")),
+                  key=lambda i: int(re.sub('\D', '', i)))     
 
 
     N = (len(flair)) # Number of subjects for training/validation, by default using all subjects in the folder
