@@ -50,7 +50,7 @@ import pandas as pd
 from scipy import ndimage
 from utils.data_load import remove_connected_components, get_data_loader
 from utils.setup import get_default_device
-from utils.metrics import get_lesion_rc
+from utils.retention_curve import get_lesion_rc_with_fn
 from utils.visualise import plot_iqr_median_rc, plot_mean_rc
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
@@ -128,13 +128,12 @@ def main(args):
     num_patients = 0
     fracs_ret = np.log(np.arange(200 + 1)[1:])
     fracs_ret /= np.amax(fracs_ret)
-    uncs_metrics = ['sum', 'mean', 'logsum', 'median', 'volume']
-    uncs_metrics = uncs_metrics + [um + '_ext' for um in uncs_metrics]
+    uncs_metrics = ['sum', 'mean', 'logsum', 'volume']
+    uncs_metrics = uncs_metrics + [um + '_ext' for um in uncs_metrics] + ['mean_iou_det', 'iou_ap_det']
     metric_rf = dict(zip(
         uncs_metrics, [pd.DataFrame([], columns=fracs_ret) for _ in uncs_metrics]
     ))
     f1_dict = dict()
-    
     
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
@@ -150,7 +149,8 @@ def main(args):
 
             all_outputs = []
             for model in models:
-                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
+                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, 
+                                                   model, mode='gaussian')
                 outputs_o = (act(outputs))
                 outputs = act(outputs).cpu().numpy()        # [1, 2, H, W, D]
                 all_outputs.append(np.squeeze(outputs[0, 1]))
@@ -171,7 +171,7 @@ def main(args):
                 out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
 
             filename_or_obj = out_meta.get("filename_or_obj", None) if out_meta else None
-
+            
             # Get all uncertainties
             uncs_value = ensemble_uncertainties_classification(
                 np.concatenate((np.expand_dims(all_outputs, axis=-1),
@@ -183,51 +183,56 @@ def main(args):
             
             ###############################################################3
             
-            filename_or_obj = batch_data['image_meta_dict']['filename_or_obj'][0]
-            filename_or_obj = os.path.basename(filename_or_obj)
-            original_affine = batch_data['image_meta_dict']["original_affine"][0]
-            affine = batch_data['image_meta_dict']["affine"][0]
-            spatial_shape = batch_data['image_meta_dict']["spatial_shape"][0]
+            # filename_or_obj = batch_data['image_meta_dict']['filename_or_obj'][0]
+            # filename_or_obj = os.path.basename(filename_or_obj)
+            # original_affine = batch_data['image_meta_dict']["original_affine"][0]
+            # affine = batch_data['image_meta_dict']["affine"][0]
+            # spatial_shape = batch_data['image_meta_dict']["spatial_shape"][0]
             
-            new_filename = re.sub(args.flair_prefix, 'uncs_mask.nii.gz',
-                                  filename_or_obj)
-            new_filepath = os.path.join(path_pred, "uncs_mask", new_filename)
-            save_image(uncs_mask, new_filepath, affine, original_affine, spatial_shape, 
-                       mode='bilinear')
+            # new_filename = re.sub(args.flair_prefix, 'uncs_mask.nii.gz',
+            #                       filename_or_obj)
+            # new_filepath = os.path.join(path_pred, "uncs_mask", new_filename)
+            # save_image(uncs_mask, new_filepath, affine, original_affine, spatial_shape, 
+            #            mode='bilinear')
             
-            new_filename = re.sub(args.flair_prefix, 'uncs_map.nii.gz',
-                                  filename_or_obj)
-            new_filepath = os.path.join(path_pred, "uncs_map", new_filename)
-            save_image(uncs_value, new_filepath, affine, original_affine, spatial_shape,
-                       mode='nearest')
+            # new_filename = re.sub(args.flair_prefix, 'uncs_map.nii.gz',
+            #                       filename_or_obj)
+            # new_filepath = os.path.join(path_pred, "uncs_map", new_filename)
+            # save_image(uncs_value, new_filepath, affine, original_affine, spatial_shape,
+            #            mode='nearest')
             
-            new_filename = re.sub(args.flair_prefix, 'prob_pred.nii.gz',
-                                  filename_or_obj)
-            new_filepath = os.path.join(path_pred, "prob_pred", new_filename)
-            save_image(outputs_mean, new_filepath, affine, original_affine, spatial_shape,
-                       mode='bilinear')
+            # new_filename = re.sub(args.flair_prefix, 'prob_pred.nii.gz',
+            #                       filename_or_obj)
+            # new_filepath = os.path.join(path_pred, "prob_pred", new_filename)
+            # save_image(outputs_mean, new_filepath, affine, original_affine, spatial_shape,
+            #            mode='bilinear')
             
-            new_filename = re.sub(args.flair_prefix, 'pred.nii.gz',
-                                  filename_or_obj)
-            new_filepath = os.path.join(path_pred, "pred", new_filename)
-            save_image(seg, new_filepath, affine, original_affine, spatial_shape,
-                       mode='nearest')
+            # new_filename = re.sub(args.flair_prefix, 'pred.nii.gz',
+            #                       filename_or_obj)
+            # new_filepath = os.path.join(path_pred, "pred", new_filename)
+            # save_image(seg, new_filepath, affine, original_affine, spatial_shape,
+            #            mode='nearest')
             
             ####################################################################
+            
+            ens_seg = all_outputs.copy()
+            ens_seg[ens_seg >= args.threshold] = 1.0
+            ens_seg[ens_seg < args.threshold] = 0.0
 
-            metric_rf_row, f1_values = get_lesion_rc(gts=gt,
+            metric_rf_row, f1_values = get_lesion_rc_with_fn(gts=gt,
                                                      preds=seg,
                                                      uncs=uncs_value,
                                                      fracs_retained=fracs_ret,
                                                      multi_uncs_mask=uncs_mask,
                                                      IoU_threshold=args.IoU_threshold,
-                                                     n_jobs=args.n_jobs)
+                                                     n_jobs=args.n_jobs,
+                                                     all_outputs=ens_seg)
             for ut in uncs_metrics:
                 row_df = pd.DataFrame(np.expand_dims(metric_rf_row[ut], axis=0), 
                                       columns=fracs_ret, index=[0])
                 metric_rf[ut] = metric_rf[ut].append(row_df, ignore_index=True)
                 
-            f1_dict[os.path.basename(filename_or_obj)] = f1_values
+            f1_dict[filename_or_obj] = f1_values
             
             pkl_filepath = os.path.join(args.path_save, f"subject_f1{thresh_str}_{args.unc_metric}.pkl")
             with open(pkl_filepath, 'wb') as f:
@@ -240,33 +245,35 @@ def main(args):
             if num_patients % 10 == 0:
                 print(f"Processed {num_patients} scans")
     
+    mean_auc_ut = []
     with open(os.path.join(args.path_save, f"f1{thresh_str}-AUC_{args.unc_metric}.csv"), 'w') as f:
         for ut in uncs_metrics:
-            mean_aac = metrics.auc(fracs_ret, np.asarray(metric_rf[ut].mean()))
-            f.write(f"{ut} AAC:\t{mean_aac}")
+            mean_auc = metrics.auc(fracs_ret, np.asarray(metric_rf[ut].mean()))
+            mean_auc_ut += [mean_auc]
+            f.write(f"{ut} AAC:\t{mean_auc}")
     
-            plot_iqr_median_rc(metric_rf[ut], fracs_ret,
-                               os.path.join(args.path_save, 
-                                            f"IQR_RC_f1{thresh_str}_{args.unc_metric}_{ut}_df.png"))
-            plot_mean_rc(metric_rf[ut], fracs_ret,
-                               os.path.join(args.path_save, 
-                                            f"mean_RC_f1{thresh_str}_{args.unc_metric}_{ut}_df.png"))
-            for i, row in metric_rf[ut].iterrows():
-                plt.plot(fracs_ret, row)
-            plt.savefig(os.path.join(args.path_save, f"subject_RC_f1{thresh_str}_{args.unc_metric}_{ut}_df.png"))
-            plt.close('all')
+    #         plot_iqr_median_rc(metric_rf[ut], fracs_ret,
+    #                            os.path.join(args.path_save, 
+    #                                         f"IQR_RC_f1{thresh_str}_{args.unc_metric}_{ut}_df.png"))
+    #         plot_mean_rc(metric_rf[ut], fracs_ret,
+    #                            os.path.join(args.path_save, 
+    #                                         f"mean_RC_f1{thresh_str}_{args.unc_metric}_{ut}_df.png"))
+    #         for i, row in metric_rf[ut].iterrows():
+    #             plt.plot(fracs_ret, row)
+    #         plt.savefig(os.path.join(args.path_save, f"subject_RC_f1{thresh_str}_{args.unc_metric}_{ut}_df.png"))
+    #         plt.close('all')
             
     save_path = os.path.join(args.path_save, 
                              f"mean_RC_f1{thresh_str}_{args.unc_metric}_df.png")
-    for ut in uncs_metrics:
+    for i_ut, ut in enumerate(uncs_metrics):
         mean = metric_rf[ut].mean()
-        plt.plot(fracs_ret, mean, label=ut)
+        plt.plot(fracs_ret, mean, label=f"{ut} (R-AUC={mean_auc_ut[i_ut]:.3f})")
 
     plt.xlim([0, 1.01])
     plt.legend()
     plt.xlabel("Retention fraction")
     plt.ylabel("F1 lesion-scale")
-    plt.savefig(save_path)
+    plt.savefig(save_path, dpi=300)
     plt.clf()
     
     print(f"Saved f1 scores and retention curve to folder {args.path_save}")

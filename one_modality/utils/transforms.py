@@ -118,6 +118,32 @@ def get_FN_lesions_mask_parallel(ground_truth, predictions, IoU_threshold, mask_
     return mask_encoding(lesion_masks_list=fn_lesions, dtype="int", mask_type=mask_type)
 
 
+def get_FN_lesions_count_parallel(ground_truth, predictions, IoU_threshold, mask_type, parallel_backend):
+    def get_fn(label_gt, mask_multi_pred, mask_multi_gt):
+        mask_label_gt = (mask_multi_gt == label_gt).astype(int)
+        all_iou = [0]
+        for int_label_pred in np.unique(mask_multi_pred * mask_label_gt):
+            if int_label_pred != 0.0:
+                mask_label_pred = (mask_multi_pred == int_label_pred).astype(int)
+                all_iou.append(intersection_over_union(mask_label_pred, mask_label_gt))
+        max_iou = max(all_iou)
+        if max_iou < IoU_threshold:
+            return 1
+        else:
+            return None
+
+    mask_multi_gt_ = ndimage.label(ground_truth)[0]
+    mask_multi_pred_ = ndimage.label(predictions)[0]
+
+    process = partial(get_fn, mask_multi_pred=mask_multi_pred_, mask_multi_gt=mask_multi_gt_)
+    fn_lesions = parallel_backend(delayed(process)(label_gt) 
+                                  for label_gt in np.unique(mask_multi_gt_) 
+                                  if label_gt != 0.0)
+    fn_lesions = [les for les in fn_lesions if les is not None]
+            
+    return np.sum(fn_lesions)
+
+
 def get_TP_FP_lesions_mask_parallel(ground_truth, predictions, IoU_threshold, mask_type, parallel_backend):
     """
     Returns arrays with TP and FP lesions from the prediction.

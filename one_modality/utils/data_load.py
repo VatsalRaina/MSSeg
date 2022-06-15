@@ -32,10 +32,8 @@ def get_data_loader(args):
     Required options in the `args`: path_data, flair_frefix, path_gts, gts_prefix, check_dataset, num_workers
 
     """
-    flair = sorted(glob(os.path.join(args.path_data, f"*{args.flair_prefix}")),
-                   key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    segs = sorted(glob(os.path.join(args.path_gts, f"*{args.gts_prefix}")),
-                  key=lambda i: int(re.sub('\D', '', i)))
+    flair = sorted(glob(os.path.join(args.path_data, f"*{args.flair_prefix}")))  # Collect all flair images sorted
+    segs = sorted(glob(os.path.join(args.path_gts, f"*{args.gts_prefix}")))
     if args.check_dataset:
         check_dataset(flair, segs, args)
 
@@ -53,7 +51,7 @@ def get_data_loader(args):
         ]
     )
 
-    val_ds = CacheDataset(data=test_files, transform=val_transforms, cache_rate=0.5, num_workers=args.num_workers)
+    val_ds = CacheDataset(data=test_files, transform=val_transforms, cache_rate=0.1, num_workers=args.num_workers)
     return DataLoader(val_ds, batch_size=1, num_workers=args.num_workers)
 
 def get_data_loader_brain_mask(args):
