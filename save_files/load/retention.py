@@ -146,7 +146,7 @@ def main(args):
 
         # Calculate all AUC-DSCs
         for unc_key, curr_uncs in uncs.items():
-            fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten(), n_jobs=args.n_jobs)
+            fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
             all_curves_dsc_norm[unc_key].append(dsc_norm_curve)
 
     for unc_key, unc_curves_dsc_norm in all_curves_dsc_norm.items():
