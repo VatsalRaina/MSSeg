@@ -6,6 +6,7 @@ from joblib import Parallel, delayed
 from functools import partial
 import numpy as np
 from scipy import ndimage
+from sklearn import metrics
 
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set_theme()
@@ -16,7 +17,9 @@ from uncertainty import ensemble_uncertainties_classification
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.35, help='Threshold for lesion detection')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
-parser.add_argument('--path_data', type=str, default='', help='Specify the path to the directory of np files')
+parser.add_argument('--path_data_devin', type=str, default='', help='Specify the path to the directory of np files')
+parser.add_argument('--path_data_devout', type=str, default='', help='Specify the path to the directory of np files')
+parser.add_argument('--path_data_evalin', type=str, default='', help='Specify the path to the directory of np files')
 parser.add_argument('--path_save', type=str, default='', help='Save path for retention curves')
 
 
@@ -80,8 +83,15 @@ def get_unc_score(gts, preds, uncs, n_jobs=8):
 def main(args):
     
     # Load the gts and predictions
-    gt_loc = args.path_data + 'gt/'
+    gt_loc = args.path_data_devin + 'gt/'
     gt_paths = sorted(glob(os.path.join(gt_loc, "*.npy")), key=lambda i: int(re.sub('\D', '', i)))
+
+    gt_loc = args.path_data_devout + 'gt/'
+    gt_paths += sorted(glob(os.path.join(gt_loc, "*.npy")), key=lambda i: int(re.sub('\D', '', i)))
+
+    gt_loc = args.path_data_evalin + 'gt/'
+    gt_paths += sorted(glob(os.path.join(gt_loc, "*.npy")), key=lambda i: int(re.sub('\D', '', i)))
+
     all_gts = []
     for gt_path in gt_paths:
         all_gts.append(np.load(gt_path))
@@ -89,9 +99,17 @@ def main(args):
     K = args.num_models
     all_model_preds = {}
     for i in range(K):
-        all_model_preds[i+1] = []
-        model_preds_loc = args.path_data + 'model' + str(i+1) + '/'
+        
+        model_preds_loc = args.path_data_devin + 'model' + str(i+1) + '/'
         model_preds_paths = sorted(glob(os.path.join(model_preds_loc, "*.npy")), key=lambda i: int(re.sub('\D', '', i)))
+
+        model_preds_loc = args.path_data_devout + 'model' + str(i+1) + '/'
+        model_preds_paths += sorted(glob(os.path.join(model_preds_loc, "*.npy")), key=lambda i: int(re.sub('\D', '', i)))
+
+        model_preds_loc = args.path_data_evalin + 'model' + str(i+1) + '/'
+        model_preds_paths += sorted(glob(os.path.join(model_preds_loc, "*.npy")), key=lambda i: int(re.sub('\D', '', i)))
+
+        all_model_preds[i+1] = []
         for model_pred_path in model_preds_paths:
             all_model_preds[i+1].append(np.load(model_pred_path))
 
@@ -106,7 +124,9 @@ def main(args):
         'expected_entropy': [],
         'mutual_information': [],
         'epkl': [],
-        'reverse_mutual_information': []
+        'reverse_mutual_information': [],
+        'ideal': [],
+        'random': []
     }
 
     for p in range(P):
@@ -147,14 +167,26 @@ def main(args):
             fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
             all_curves_dsc_norm[unc_key].append(dsc_norm_curve)
 
+        # Get ideal score
+        fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), abs(gt.flatten()-seg.flatten()))
+        all_curves_dsc_norm['ideal'].append(dsc_norm_curve)
+
+        # Get random score
+        fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), np.random.rand(len(gt.flatten())))
+        all_curves_dsc_norm['random'].append(dsc_norm_curve)
+
     for unc_key, unc_curves_dsc_norm in all_curves_dsc_norm.items():
         scores = np.asarray(unc_curves_dsc_norm)
         scores = np.mean(unc_curves_dsc_norm, axis=0)
         all_curves_dsc_norm[unc_key] = scores
 
+    to_plot = ['reverse_mutual_information', 'ideal', 'random']
+
     # Plot the retention curves now
     for unc_key, scores in all_curves_dsc_norm.items():
-        plt.plot(fracs_retained, scores, label=unc_key)
+        print(unc_key, 1. - metrics.auc(fracs_retained, scores))
+        if unc_key in to_plot:
+            plt.plot(fracs_retained, scores, label=unc_key)
     plt.xlabel("Retention Fraction")
     plt.ylabel("nDSC")
     plt.xlim([0.0,1.01])
