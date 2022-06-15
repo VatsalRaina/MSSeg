@@ -96,6 +96,7 @@ def main(args):
             all_model_preds[i+1].append(np.load(model_pred_path))
 
     P = len(all_gts)
+    print("Number of patients:", P)
 
     th = args.threshold
 
