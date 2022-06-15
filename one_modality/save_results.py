@@ -50,7 +50,7 @@ import pandas as pd
 from scipy import ndimage
 from utils.data_load import remove_connected_components, get_data_loader
 from utils.setup import get_default_device
-from utils.metrics import get_lesion_rc
+from utils.retention_curve import get_lesion_rc_with_fn
 from utils.visualise import plot_iqr_median_rc, plot_mean_rc
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
@@ -72,7 +72,6 @@ parser.add_argument('--n_jobs', type=int, default=1,
                     help="number of cores used for computation of dsc for different retention fractions")
 parser.add_argument('--num_workers', type=int, default=0,
                     help='number of jobs used to load the data, DataLoader parameter')
-parser.add_argument('--IoU_threshold', default=0.5, type=float, help="IoU threshold for lesion F1 computation")
 
 
 def get_connected_components(pred_map, uncs_map):
@@ -121,25 +120,14 @@ def main(args):
         raise ValueError(f"invalid number of num_models {args.num_models}")
         
     os.makedirs(args.path_save, exist_ok=True)
-    thresh_str = "%.3d" % (args.IoU_threshold * 100)
     
     # %%
     print("Staring evaluation")
-    num_patients = 0
-    fracs_ret = np.log(np.arange(200 + 1)[1:])
-    fracs_ret /= np.amax(fracs_ret)
-    uncs_metrics = ['sum', 'mean', 'logsum', 'median', 'volume']
-    uncs_metrics = uncs_metrics + [um + '_ext' for um in uncs_metrics]
-    metric_rf = dict(zip(
-        uncs_metrics, [pd.DataFrame([], columns=fracs_ret) for _ in uncs_metrics]
-    ))
-    f1_dict = dict()
-    
+    npy_name = lambda x: re.sub("FLAIR", "data", x.split('.')[0]) + '.npz'
     
     with torch.no_grad():
         for count, batch_data in enumerate(val_loader):
             # Get models predictions
-            num_patients += 1
             inputs, gt = (
                 batch_data["image"].to(device),
                 batch_data["label"].cpu().numpy(),
@@ -150,28 +138,40 @@ def main(args):
 
             all_outputs = []
             for model in models:
-                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, model, mode='gaussian')
-                outputs_o = (act(outputs))
+                outputs = sliding_window_inference(inputs, roi_size, sw_batch_size, 
+                                                   model, mode='gaussian')
                 outputs = act(outputs).cpu().numpy()        # [1, 2, H, W, D]
                 all_outputs.append(np.squeeze(outputs[0, 1]))
             all_outputs = np.asarray(all_outputs)        # [M, H, W, D]
             outputs_mean = np.mean(all_outputs, axis=0)     # [H, W, D]
             
+            filename_or_obj = batch_data['image_meta_dict']['filename_or_obj']
+            filename_or_obj = batch_data['image_meta_dict']['filename_or_obj']
+            assert len(filename_or_obj) == 1
+            filename_or_obj = os.path.basename(filename_or_obj[0])
+            
             seg = outputs_mean.copy()
             seg[seg > args.threshold] = 1
             seg[seg < args.threshold] = 0
+            unique = np.unique(seg)
             seg = np.squeeze(seg)      # [H, W, D]
             seg = remove_connected_components(segmentation=seg, l_min=9)
-            assert (np.unique(seg) == np.array([0,1])).all(), f"{np.unique(seg)}"
+            if not (np.unique(seg) == np.array([0,1])).all():
+                err_filename = os.path.join(args.path_save, "error", filename_or_obj)
+                os.makedirs(os.path.join(args.path_save,  "error"))
+                np.savez(err_filename, seg=seg, all_outputs=all_outputs)
+                print(f"Found subject with weird predictions: unique labels {np.unique(seg)}\n"
+                      f"Before removing connected components: {unique}\n"
+                      f"Saved err seg to {err_filename}\n"
+                      "Skipping subject")
+                continue
+            
+            ens_seg = all_outputs.copy()
+            ens_seg[ens_seg >= args.threshold] = 1.0
+            ens_seg[ens_seg < args.threshold] = 0.0
 
             gt = np.squeeze(gt)     # [H, W, D]
             
-            meta_data = batch_data['image_meta_dict']
-            for i, data in enumerate(outputs_o):  
-                out_meta = {k: meta_data[k][i] for k in meta_data} if meta_data else None
-
-            filename_or_obj = out_meta.get("filename_or_obj", None) if out_meta else None
-
             # Get all uncertainties
             uncs_value = ensemble_uncertainties_classification(
                 np.concatenate((np.expand_dims(all_outputs, axis=-1),
@@ -181,44 +181,60 @@ def main(args):
             uncs_mask = get_connected_components(pred_map=outputs_mean, 
                                                  uncs_map=uncs_value)
             
+            filename_or_obj = batch_data['image_meta_dict']['filename_or_obj']
+            assert len(filename_or_obj) == 1
+            filename_or_obj = os.path.basename(filename_or_obj[0])
+            
+            np.savez_compressed(os.path.join(args.path_save, npy_name(filename_or_obj)), 
+                                all_outputs=all_outputs, gt=gt, seg=seg,
+                                multi_uncs_mask=uncs_mask,
+                                uncs_value=uncs_value)
+            
+            # metric_rf_row, f1_values = get_lesion_rc_with_fn(gts=gt,
+            #                                          preds=seg,
+            #                                          uncs=uncs_value,
+            #                                          fracs_retained=fracs_ret,
+            #                                          multi_uncs_mask=uncs_mask,
+            #                                          IoU_threshold=args.IoU_threshold,
+            #                                          n_jobs=args.n_jobs,
+            #                                          all_outputs=ens_seg)
+                        
+            
             ###############################################################3
             
-            filename_or_obj = batch_data['image_meta_dict']['filename_or_obj'][0]
-            filename_or_obj = os.path.basename(filename_or_obj)
-            original_affine = batch_data['image_meta_dict']["original_affine"][0]
-            affine = batch_data['image_meta_dict']["affine"][0]
-            spatial_shape = batch_data['image_meta_dict']["spatial_shape"][0]
+            # filename_or_obj = batch_data['image_meta_dict']['filename_or_obj'][0]
+            # filename_or_obj = os.path.basename(filename_or_obj)
+            # original_affine = batch_data['image_meta_dict']["original_affine"][0]
+            # affine = batch_data['image_meta_dict']["affine"][0]
+            # spatial_shape = batch_data['image_meta_dict']["spatial_shape"][0]
             
-            new_filename = re.sub(args.flair_prefix, 'uncs_mask.nii.gz',
-                                  filename_or_obj)
-            new_filepath = os.path.join(path_pred, "uncs_mask", new_filename)
-            save_image(uncs_mask, new_filepath, affine, original_affine, spatial_shape, 
-                       mode='bilinear')
+            # new_filename = re.sub(args.flair_prefix, 'uncs_mask.nii.gz',
+            #                       filename_or_obj)
+            # new_filepath = os.path.join(path_pred, "uncs_mask", new_filename)
+            # save_image(uncs_mask, new_filepath, affine, original_affine, spatial_shape, 
+            #            mode='bilinear')
             
-            new_filename = re.sub(args.flair_prefix, 'uncs_map.nii.gz',
-                                  filename_or_obj)
-            new_filepath = os.path.join(path_pred, "uncs_map", new_filename)
-            save_image(uncs_value, new_filepath, affine, original_affine, spatial_shape,
-                       mode='nearest')
+            # new_filename = re.sub(args.flair_prefix, 'uncs_map.nii.gz',
+            #                       filename_or_obj)
+            # new_filepath = os.path.join(path_pred, "uncs_map", new_filename)
+            # save_image(uncs_value, new_filepath, affine, original_affine, spatial_shape,
+            #            mode='nearest')
             
-            new_filename = re.sub(args.flair_prefix, 'prob_pred.nii.gz',
-                                  filename_or_obj)
-            new_filepath = os.path.join(path_pred, "prob_pred", new_filename)
-            save_image(outputs_mean, new_filepath, affine, original_affine, spatial_shape,
-                       mode='bilinear')
+            # new_filename = re.sub(args.flair_prefix, 'prob_pred.nii.gz',
+            #                       filename_or_obj)
+            # new_filepath = os.path.join(path_pred, "prob_pred", new_filename)
+            # save_image(outputs_mean, new_filepath, affine, original_affine, spatial_shape,
+            #            mode='bilinear')
             
-            new_filename = re.sub(args.flair_prefix, 'pred.nii.gz',
-                                  filename_or_obj)
-            new_filepath = os.path.join(path_pred, "pred", new_filename)
-            save_image(seg, new_filepath, affine, original_affine, spatial_shape,
-                       mode='nearest')
+            # new_filename = re.sub(args.flair_prefix, 'pred.nii.gz',
+            #                       filename_or_obj)
+            # new_filepath = os.path.join(path_pred, "pred", new_filename)
+            # save_image(seg, new_filepath, affine, original_affine, spatial_shape,
+            #            mode='nearest')
             
             ####################################################################
 
-            
-    
-    print(f"Saved resuts to {args.path_save}")
-
+           
 # %%
 if __name__ == "__main__":
     args = parser.parse_args()

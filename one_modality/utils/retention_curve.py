@@ -183,85 +183,46 @@ def get_lesion_rc_with_fn(gts, preds, uncs, multi_uncs_mask, IoU_threshold, frac
     les_uncs_rc['mean_iou_det'] = None
     f1_nodes = les_uncs_rc.copy()
     
-    with Parallel(n_jobs=n_jobs) as parallel_backend:
+    parallel_backend = Parallel(n_jobs=n_jobs)
     
-        fn_lesions = get_FN_lesions_mask_parallel(ground_truth=gts,
-                                            predictions=preds,
-                                            IoU_threshold=IoU_threshold,
-                                            mask_type='binary',
-                                            parallel_backend=parallel_backend)
-        
-        tp_lesions, fp_lesions = get_TP_FP_lesions_mask_parallel(ground_truth=gts,
-                                                  predictions=preds,
-                                                  IoU_threshold=IoU_threshold,
-                                                  mask_type='binary',
-                                                  parallel_backend=parallel_backend)
-        
-        tp_uncs = lesions_uncertainty(uncs_map=uncs,
-                                    binary_mask=tp_lesions,
-                                    uncs_multi_mask=multi_uncs_mask, 
-                                    ens_pred=all_outputs,
-                                    parallel=parallel_backend)
+    fn_lesions = get_FN_lesions_mask_parallel(ground_truth=gts,
+                                        predictions=preds,
+                                        IoU_threshold=IoU_threshold,
+                                        mask_type='binary',
+                                        parallel_backend=parallel_backend)
     
-        fp_uncs = lesions_uncertainty(uncs_map=uncs,
-                                    binary_mask=fp_lesions,
-                                    uncs_multi_mask=multi_uncs_mask, 
-                                    ens_pred=all_outputs,
-                                    parallel=parallel_backend)
-        
-        fn_uncs = lesions_uncertainty(uncs_map=uncs,
-                                    binary_mask=fn_lesions,
-                                    uncs_multi_mask=multi_uncs_mask, 
-                                    ens_pred=all_outputs,
-                                    parallel=parallel_backend)
-        
-        del tp_lesions, fp_lesions, fn_lesions
+    tp_lesions, fp_lesions = get_TP_FP_lesions_mask_parallel(ground_truth=gts,
+                                              predictions=preds,
+                                              IoU_threshold=IoU_threshold,
+                                              mask_type='binary',
+                                              parallel_backend=parallel_backend)
     
-        res = parallel_backend(delayed(eval_rc)(tp_uncs_l=tp_uncs[ut], 
-                                                fp_uncs_l=fp_uncs[ut], 
-                                                fn_uncs_l=fn_uncs[ut])
-                               for ut in les_uncs_rc.keys())
-        
+    tp_uncs = lesions_uncertainty(uncs_map=uncs,
+                                binary_mask=tp_lesions,
+                                uncs_multi_mask=multi_uncs_mask, 
+                                ens_pred=all_outputs,
+                                parallel=parallel_backend)
+
+    fp_uncs = lesions_uncertainty(uncs_map=uncs,
+                                binary_mask=fp_lesions,
+                                uncs_multi_mask=multi_uncs_mask, 
+                                ens_pred=all_outputs,
+                                parallel=parallel_backend)
+    
+    fn_uncs = lesions_uncertainty(uncs_map=uncs,
+                                binary_mask=fn_lesions,
+                                uncs_multi_mask=multi_uncs_mask, 
+                                ens_pred=all_outputs,
+                                parallel=parallel_backend)
+    
+    del tp_lesions, fp_lesions, fn_lesions
+
+    res = parallel_backend(delayed(eval_rc)(tp_uncs_l=tp_uncs[ut], 
+                                            fp_uncs_l=fp_uncs[ut], 
+                                            fn_uncs_l=fn_uncs[ut])
+                           for ut in les_uncs_rc.keys())
+    
     for ut, res_ut in zip(list(les_uncs_rc.keys()), res):
         les_uncs_rc[ut], f1_nodes[ut] = res_ut
-    
-    # for ut in les_uncs_rc.keys():
-    #     uncs_list = [np.asarray(tp_uncs[ut]), 
-    #                  np.asarray(fp_uncs[ut]), 
-    #                  np.asarray(fn_uncs[ut])]  # tp, fp, fn
-    
-    #     lesion_type_list = [np.full(shape=unc.shape, fill_value=fill)
-    #                         for unc, fill in zip(uncs_list, ['tp', 'fp', 'fn'])
-    #                         if unc.size > 0]
-    #     uncs_list = [unc for unc in uncs_list if unc.size > 0]
-    
-    #     uncs_all = np.concatenate(uncs_list, axis=0)
-    #     lesion_type_all = np.concatenate(lesion_type_list, axis=0)
-    
-    #     del uncs_list, lesion_type_list
-    #     assert uncs_all.shape == lesion_type_all.shape
-    
-    #     # sort uncertainties and lesions types
-    #     ordering = uncs_all.argsort()
-    #     lesion_type_all = lesion_type_all[ordering][::-1]
-    
-    #     f1_values = [compute_f1(lesion_type_all)]
-    
-    #     # reject the most uncertain lesion
-    #     for i_l, lesion_type in enumerate(lesion_type_all):
-    #         if lesion_type == 'fp':
-    #             lesion_type_all[i_l] = 'tn'
-    #         elif lesion_type == 'fn':
-    #             lesion_type_all[i_l] = 'tp'
-    #         f1_values.append(compute_f1(lesion_type_all))
-    
-    #     # interpolate the curve and make predictions in the retention fraction nodes
-    #     n_lesions = lesion_type_all.shape[0]
-    #     spline_interpolator = interp1d(x=[_ / n_lesions for _ in range(n_lesions + 1)], 
-    #                                    y=f1_values[::-1],
-    #                                    kind='slinear', fill_value="extrapolate")
-    #     # save the metrics
-    #     les_uncs_rc[ut] = spline_interpolator(fracs_retained)
-    #     f1_nodes[ut] = f1_values[::-1]
     
     return les_uncs_rc, f1_nodes

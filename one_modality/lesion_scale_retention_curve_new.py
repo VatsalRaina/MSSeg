@@ -53,6 +53,8 @@ from utils.setup import get_default_device
 from utils.retention_curve import get_lesion_rc_with_fn
 from utils.visualise import plot_iqr_median_rc, plot_mean_rc
 
+os.environ["CUDA_DEVICE_VISIBLE"] = "0"
+
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.35, help='Threshold for lesion detection')
 parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
