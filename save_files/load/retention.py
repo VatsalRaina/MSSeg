@@ -51,7 +51,7 @@ def dice_norm_metric(ground_truth, predictions):
             fnr = fn / np.sum(gt)
         return dsc_norm, fpr, fnr
 
-def get_unc_score(gts, preds, uncs, n_jobs=4):
+def get_unc_score(gts, preds, uncs, n_jobs=8):
 
     def compute_dice_norm(frac_, preds_, gts_, N_):
         pos = int(N_ * frac_)
@@ -106,9 +106,7 @@ def main(args):
         'expected_entropy': [],
         'mutual_information': [],
         'epkl': [],
-        'reverse_mutual_information': [],
-        'ideal': [],
-        'random': []
+        'reverse_mutual_information': []
     }
 
     for p in range(P):
