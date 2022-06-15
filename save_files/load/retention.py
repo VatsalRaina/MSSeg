@@ -10,7 +10,7 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set_theme()
 
-from Uncertainty import ensemble_uncertainties_classification
+from uncertainty import ensemble_uncertainties_classification
 
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
