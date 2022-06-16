@@ -81,7 +81,7 @@ def cc_uncertainty(cc_mask, uncs_map, uncs_multi_mask, ens_pred):
     return res
 
 
-def lesions_uncertainty(uncs_map, binary_mask, uncs_multi_mask, ens_pred, parallel):
+def lesions_uncertainty(uncs_map, binary_mask, uncs_multi_mask, ens_pred, parallel, dl=True):
     """
     Parallel evaluation of all uncertainties
     """
@@ -114,8 +114,10 @@ def lesions_uncertainty(uncs_map, binary_mask, uncs_multi_mask, ens_pred, parall
         metrics['iou_ap_det'] = []
         metrics['mean_iou_det'] = []
         return metrics
-    
-    return ld_to_dl(les_uncs_list)
+    if dl:
+        return ld_to_dl(les_uncs_list)
+    else:
+        return les_uncs_list
 
 
 def get_lesion_rc_with_fn(gts, preds, uncs, multi_uncs_mask, IoU_threshold, fracs_retained, 
