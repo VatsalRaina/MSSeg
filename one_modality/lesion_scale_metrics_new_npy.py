@@ -71,7 +71,7 @@ def main(args):
     uncs_metrics_ = uncs_metrics + ['hash', 'type', 'number']
     
     les_uncs_df = pd.DataFrame([], columns=uncs_metrics_)
-    csv_path = os.path.join(path_save, f'lesion_uncertainty_metrics_{args.uncs_metric}.csv')
+    csv_path = os.path.join(path_save, f'lesion_uncertainty_metrics_{args.unc_metric}.csv')
     n_fn_df = pd.DataFrame([], columns=['fn_count', 'hash'])
     csv1_path = os.path.join(path_save, 'fn_count.csv')
     
