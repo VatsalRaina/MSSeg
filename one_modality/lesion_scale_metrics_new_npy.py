@@ -137,7 +137,8 @@ def main(args):
                 les_dict['hash'] = filename_or_obj
                 les_uncs_df = les_uncs_df.append(les_dict, ignore_index=True)
                 
-            n_fn_df = n_fn_df.append({'fn_count': n_fn, 'hash': filename_or_obj})
+            n_fn_df = n_fn_df.append({'fn_count': n_fn, 'hash': filename_or_obj}, 
+                                     ignore_index=True)
                 
             les_uncs_df.to_csv(csv_path)
             n_fn_df.to_csv(csv1_path)
