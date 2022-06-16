@@ -71,8 +71,9 @@ def main(args):
     uncs_metrics_ = uncs_metrics + ['hash', 'type', 'number']
     
     les_uncs_df = pd.DataFrame([], columns=uncs_metrics_)
-    csv_path = os.path.join(path_save, 'lesion_uncertainty_metrics_{args.uncs_metric}.csv')
-    f1_dict = dict()
+    csv_path = os.path.join(path_save, f'lesion_uncertainty_metrics_{args.uncs_metric}.csv')
+    n_fn_df = pd.DataFrame([], columns=['fn_count', 'hash'])
+    csv1_path = os.path.join(path_save, 'fn_count.csv')
     
     with Parallel(n_jobs=args.n_jobs) as parallel_backend:
         for npy_file in npy_files:
@@ -128,15 +129,18 @@ def main(args):
                 les_dict['type'] = 'tp'
                 les_dict['number'] = i_l
                 les_dict['hash'] = filename_or_obj
-                les_uncs_df.append(les_dict, ignore_index=True)
+                les_uncs_df = les_uncs_df.append(les_dict, ignore_index=True)
                 
             for i_l, les_dict in enumerate(uncs_list_fp):
                 les_dict['type'] = 'tp'
                 les_dict['number'] = i_l
                 les_dict['hash'] = filename_or_obj
-                les_uncs_df.append(les_dict, ignore_index=True)
+                les_uncs_df = les_uncs_df.append(les_dict, ignore_index=True)
+                
+            n_fn_df = n_fn_df.append({'fn_count': n_fn, 'hash': filename_or_obj})
                 
             les_uncs_df.to_csv(csv_path)
+            n_fn_df.to_csv(csv1_path)
    
     # get an optimal threshold
     print(f"Saved resutls to folder {args.path_save}")
