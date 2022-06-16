@@ -105,16 +105,16 @@ def lesions_uncertainty(uncs_map, binary_mask, uncs_multi_mask, ens_pred, parall
         ) for cc_label in cc_labels
     )   # returns lists of dictionaries, but need dictionary of lists
     
-    if les_uncs_list == []:
-        metrics = {
-        'sum': [], 'mean': [], 'logsum': [], 'median': [], 'volume': []
-        }
-        for k in list(metrics.keys()).copy():
-            metrics[k + '_ext'] = []
-        metrics['iou_ap_det'] = []
-        metrics['mean_iou_det'] = []
-        return metrics
     if dl:
+        if les_uncs_list == []:
+            metrics = {
+            'sum': [], 'mean': [], 'logsum': [], 'median': [], 'volume': []
+            }
+            for k in list(metrics.keys()).copy():
+                metrics[k + '_ext'] = []
+            metrics['iou_ap_det'] = []
+            metrics['mean_iou_det'] = []
+            return metrics
         return ld_to_dl(les_uncs_list)
     else:
         return les_uncs_list
