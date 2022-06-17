@@ -75,26 +75,26 @@ def main(args):
     n_fn_df = pd.DataFrame([], columns=['fn_count', 'hash'])
     csv1_path = os.path.join(path_save, 'fn_count.csv')
     
-    with Parallel(n_jobs=args.n_jobs) as parallel_backend:
-        for npy_file in npy_files:
-            # loading variables
-            npy_loader = np.load(npy_file)
-            
-            filename_or_obj = re.sub("_data.npy", "", os.path.basename(npy_file))
-            
-            all_outputs = npy_loader['all_outputs']
-            gt=npy_loader['gt']
-            seg=npy_loader['seg']
-            uncs_mask=npy_loader['multi_uncs_mask']
-            uncs_value=npy_loader['uncs_value']
-            seg=npy_loader['seg']
-                    
-            ens_seg = all_outputs.copy()
-            ens_seg[ens_seg >= args.threshold] = 1.0
-            ens_seg[ens_seg < args.threshold] = 0.0
-            
-            del all_outputs
-    
+    for npy_file in npy_files:
+        # loading variables
+        npy_loader = np.load(npy_file)
+        
+        filename_or_obj = re.sub("_data.npz", "", os.path.basename(npy_file))
+        
+        all_outputs = npy_loader['all_outputs']
+        gt=npy_loader['gt']
+        seg=npy_loader['seg']
+        uncs_mask=npy_loader['multi_uncs_mask']
+        uncs_value=npy_loader['uncs_value']
+        seg=npy_loader['seg']
+                
+        ens_seg = all_outputs.copy()
+        ens_seg[ens_seg >= args.threshold] = 1.0
+        ens_seg[ens_seg < args.threshold] = 0.0
+        
+        del all_outputs
+
+        with Parallel(n_jobs=args.n_jobs) as parallel_backend:
             # computing uncs measures
             n_fn = get_FN_lesions_count_parallel(ground_truth=gt,
                                                predictions=seg,
@@ -108,7 +108,7 @@ def main(args):
                                                       mask_type='binary',
                                                       parallel_backend=parallel_backend)
             
-            np.savez_compressed(os.path.join(path_les, filename_or_obj + 'lesion_data.npz'), 
+            np.savez_compressed(os.path.join(path_les, filename_or_obj + '_lesion_data.npz'), 
                                 tp_lesions=tp_lesions, fp_lesions=fp_lesions, n_fn=n_fn)
             # get list of lesions metrics
             uncs_list_tp = lesions_uncertainty(uncs_map=uncs_value, 
@@ -123,25 +123,28 @@ def main(args):
                                                 ens_pred=ens_seg, 
                                                 parallel=parallel_backend,
                                                 dl=False)
+        
+        # add lesions descriptions to the lesions dictioaries
+        for i_l, les_dict in enumerate(uncs_list_tp):
+            les_dict_copy = les_dict.copy()
+            les_dict_copy['type'] = 'tp'
+            les_dict_copy['number'] = i_l
+            les_dict_copy['hash'] = filename_or_obj
+            les_uncs_df = les_uncs_df.append(les_dict_copy, ignore_index=True)
             
-            # add lesions descriptions to the lesions dictioaries
-            for i_l, les_dict in enumerate(uncs_list_tp):
-                les_dict['type'] = 'tp'
-                les_dict['number'] = i_l
-                les_dict['hash'] = filename_or_obj
-                les_uncs_df = les_uncs_df.append(les_dict, ignore_index=True)
-                
-            for i_l, les_dict in enumerate(uncs_list_fp):
-                les_dict['type'] = 'tp'
-                les_dict['number'] = i_l
-                les_dict['hash'] = filename_or_obj
-                les_uncs_df = les_uncs_df.append(les_dict, ignore_index=True)
-                
-            n_fn_df = n_fn_df.append({'fn_count': n_fn, 'hash': filename_or_obj}, 
-                                     ignore_index=True)
-                
-            les_uncs_df.to_csv(csv_path)
-            n_fn_df.to_csv(csv1_path)
+        for i_l, les_dict in enumerate(uncs_list_fp):
+            les_dict_copy = les_dict.copy()
+            les_dict_copy['type'] = 'fp'
+            les_dict_copy['number'] = i_l
+            les_dict_copy['hash'] = filename_or_obj
+            les_uncs_df = les_uncs_df.append(les_dict_copy, ignore_index=True)
+            
+        n_fn_df = n_fn_df.append({'fn_count': n_fn, 
+                                  'hash': filename_or_obj}, 
+                                 ignore_index=True)
+            
+        les_uncs_df.to_csv(csv_path)
+        n_fn_df.to_csv(csv1_path)
    
     # get an optimal threshold
     print(f"Saved resutls to folder {args.path_save}")
