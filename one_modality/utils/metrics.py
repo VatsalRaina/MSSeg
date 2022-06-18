@@ -192,8 +192,74 @@ def f1_lesion_metric_parallel(ground_truth, predictions, IoU_threshold, parallel
     fn = float(np.sum(fn))
 
     if tp + 0.5 * (fp + fn) == 0.0:
-        return 0
+        return 1.0
     return tp / (tp + 0.5 * (fp + fn))
+
+
+def lesion_metrics_parallel(ground_truth, predictions, IoU_threshold, 
+                            parallel_backend):
+    """
+    For a single example returns DSC_norm, fpr, fnr
+
+    Parameters:
+        * ground_truth (numpy.ndarray) - size [H, W, D]
+        * predictions (numpy.ndarray) - size [H, W, D]
+        * IoU_threshold (float) - see description in the scientific report
+    """
+
+    def get_tp_fp(label_pred, mask_multi_pred, mask_multi_gt):
+        mask_label_pred = (mask_multi_pred == label_pred).astype(int)
+        all_iou = [0.0]
+        # iterate only intersections
+        for int_label_gt in np.unique(mask_multi_gt * mask_label_pred):
+            if int_label_gt != 0.0:
+                mask_label_gt = (mask_multi_gt == int_label_gt).astype(int)
+                all_iou.append(intersection_over_union(
+                    mask_label_pred, mask_label_gt))
+        max_iou = max(all_iou)
+        if max_iou >= IoU_threshold:
+            return 'tp'
+        else:
+            return 'fp'
+
+    def get_fn(label_gt, mask_multi_pred, mask_multi_gt):
+        mask_label_gt = (mask_multi_gt == label_gt).astype(int)
+        all_iou = [0]
+        for int_label_pred in np.unique(mask_multi_pred * mask_label_gt):
+            if int_label_pred != 0.0:
+                mask_label_pred = (mask_multi_pred ==
+                                   int_label_pred).astype(int)
+                all_iou.append(intersection_over_union(
+                    mask_label_pred, mask_label_gt))
+        max_iou = max(all_iou)
+        if max_iou < IoU_threshold:
+            return 1
+        else:
+            return 0
+
+    mask_multi_pred_ = ndimage.label(predictions)[0]
+    mask_multi_gt_ = ndimage.label(ground_truth)[0]
+
+    process_fp_tp = partial(get_tp_fp, mask_multi_pred=mask_multi_pred_,
+                            mask_multi_gt=mask_multi_gt_)
+
+    tp_fp = parallel_backend(delayed(process_fp_tp)(label_pred)
+                             for label_pred in np.unique(mask_multi_pred_) if label_pred != 0)
+    counter = Counter(tp_fp)
+    tp = float(counter['tp'])
+    fp = float(counter['fp'])
+
+    process_fn = partial(get_fn, mask_multi_pred=mask_multi_pred_,
+                         mask_multi_gt=mask_multi_gt_)
+
+    fn = parallel_backend(delayed(process_fn)(label_gt)
+                          for label_gt in np.unique(mask_multi_gt_) if label_gt != 0)
+    fn = float(np.sum(fn))
+
+    return tp / (tp + 0.5 * (fp + fn)) if tp + 0.5 * (fp + fn) != 0.0 else 0.0, \
+        tp / (tp + fn) if tp + fn != 0.0 else 0.0, \
+            fp / (fp + tp) if fp + tp != 0.0 else 0.0, \
+                fn / (fn + tp) if fn + tp != 0.0 else 0.0
 
 
 def get_dsc_norm(gts, preds, uncs, n_jobs=None):
