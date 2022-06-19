@@ -39,10 +39,6 @@ from utils.transforms import get_TP_FP_lesions_mask_parallel, get_FN_lesions_cou
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
 parser.add_argument('--threshold', type=float, default=0.35, help='Threshold for lesion detection')
-
-parser.add_argument('--num_models', type=int, default=5, help='Number of models in ensemble')
-parser.add_argument('--i_seed', type=int, default=-1,
-                    help='if num_models==1, it will use the i_seed model for predictions')
 parser.add_argument('--unc_metric', type=str, default="reverse_mutual_information",
                     help='name of a single uncertainty metric')
 parser.add_argument('--path_data', type=str, default='', help='Specify the path to the test data files directory')
@@ -59,11 +55,9 @@ def main(args):
     path_les = os.path.join(path_save, "lesions_data")
     os.makedirs(args.path_save, exist_ok=True)
     os.makedirs(path_les, exist_ok=True)
-    thresh_str = "%.3d" % (args.IoU_threshold * 100)
     
     # %%
     print("Staring evaluation")
-    num_patients = 0
     fracs_ret = np.log(np.arange(200 + 1)[1:])
     fracs_ret /= np.amax(fracs_ret)
     uncs_metrics = ['sum', 'mean', 'logsum', 'volume']

@@ -68,8 +68,6 @@ parser.add_argument('--flair_prefix', type=str, default="FLAIR.nii.gz", help='na
 parser.add_argument('--gts_prefix', type=str, default="gt.nii", help='name ending segmentation mask')
 parser.add_argument('--check_dataset', action='store_true',
                     help='if sent, checks that FLAIR and semg masks names correspond to each other')
-parser.add_argument('--n_jobs', type=int, default=1,
-                    help="number of cores used for computation of dsc for different retention fractions")
 parser.add_argument('--num_workers', type=int, default=0,
                     help='number of jobs used to load the data, DataLoader parameter')
 

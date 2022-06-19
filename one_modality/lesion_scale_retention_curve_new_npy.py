@@ -51,21 +51,6 @@ parser.add_argument('--num_workers', type=int, default=0,
                     help='number of jobs used to load the data, DataLoader parameter')
 parser.add_argument('--IoU_threshold', default=0.5, type=float, help="IoU threshold for lesion F1 computation")
 
-
-def get_connected_components(pred_map, uncs_map):
-    # uncs_mask = uncs_map * brain_mask
-    uncs_mask = (uncs_map > 0.01).astype("float") + (pred_map > 0.01).astype("float")
-    uncs_mask[uncs_mask > 0] = 1.
-    assert (np.unique(uncs_mask) == np.asarray([0, 1])).all(), f"{np.unique(uncs_mask)}"
-    return ndimage.label(uncs_mask)[0]
-
-def save_image(image, image_filepath, affine, original_affine, spatial_shape, mode):
-    os.makedirs(os.path.dirname(image_filepath), exist_ok=True)
-    write_nifti(image,image_filepath,
-                affine=affine,
-                target_affine=original_affine,
-                output_spatial_shape=spatial_shape, mode=mode)
-        
 def main(args):
     npy_files = Path(args.path_data).glob("*data.npz")
         

@@ -120,6 +120,9 @@ def lesions_uncertainty(uncs_map, binary_mask, uncs_multi_mask, ens_pred, parall
         return les_uncs_list
 
 
+# def get_lesion_rc_ideal_random_with_fn():
+    
+
 def get_lesion_rc_with_fn(gts, preds, uncs, multi_uncs_mask, IoU_threshold, fracs_retained, 
                   n_jobs, all_outputs):
     """
