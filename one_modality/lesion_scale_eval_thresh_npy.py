@@ -16,6 +16,7 @@ import re
 import pandas as pd
 from scipy import ndimage
 from joblib import Parallel, delayed
+from utils.data_load import remove_connected_components
 from utils.metrics import lesion_metrics_parallel, dice_norm_metric, intersection_over_union
 
 parser = argparse.ArgumentParser(description='Get all command line arguments.')
@@ -155,6 +156,7 @@ def main(args):
             
             # load the data
             gt=npy_loader['gt']
+            gt = remove_connected_components(gt, l_min=9)
             seg=npy_loader['seg']
                     
             all_outputs = npy_loader['all_outputs']
