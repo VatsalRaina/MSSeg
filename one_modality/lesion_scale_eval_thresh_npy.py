@@ -106,7 +106,9 @@ def cc_uncertainty(cc_mask, uncs_type,
         les = les[les != 0.0]
         if uncs_type == "sum": return np.sum(uncs_map * cc_mask)
         elif uncs_type == "mean": return np.sum(uncs_map * cc_mask) / np.sum(cc_mask)
-        elif uncs_type == "logsum": return np.log(np.sum(uncs_map * cc_mask))
+        elif uncs_type == "logsum": 
+            val = np.log(np.sum(uncs_map * cc_mask))
+            return val if not np.isnan(val) else np.inf
         elif uncs_type == "median": return np.median(les)
         elif uncs_type == 'volume': return np.sum(cc_mask)
         else: raise NotImplementedError(uncs_type)
@@ -130,7 +132,7 @@ def filter_lesions(uncs_map, binary_mask, uncs_type, uncs_threshold, parallel,
         if les_uncs_list[i_cc] < uncs_threshold:
             new_seg += (multi_mask == cc_label).astype("float")
     
-    return new_seg
+    return new_seg, les_uncs_list
     
 def main(args):
     npy_files = Path(args.path_data).glob("*data.npz")
@@ -146,6 +148,7 @@ def main(args):
                'hash']
     metrics_i = pd.DataFrame([], columns=metrics)
     metrics_f = metrics_i.copy()
+    # uncs_list
     
     with Parallel(n_jobs=args.n_jobs) as parallel:
         for npy_file in npy_files:
