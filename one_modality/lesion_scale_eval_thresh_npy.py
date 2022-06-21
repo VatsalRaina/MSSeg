@@ -106,7 +106,7 @@ def cc_uncertainty(cc_mask, uncs_type,
         les = les[les != 0.0]
         if uncs_type == "sum": return np.sum(uncs_map * cc_mask)
         elif uncs_type == "mean": return np.sum(uncs_map * cc_mask) / np.sum(cc_mask)
-        elif uncs_type == "logsum": return val = np.log(np.sum(uncs_map * cc_mask))
+        elif uncs_type == "logsum": return np.log(np.sum(uncs_map * cc_mask))
         elif uncs_type == "median": return np.median(les)
         elif uncs_type == 'volume': return np.sum(cc_mask)
         else: raise NotImplementedError(uncs_type)
