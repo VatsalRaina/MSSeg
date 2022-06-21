@@ -130,7 +130,7 @@ def filter_lesions(uncs_map, binary_mask, uncs_type, uncs_threshold, parallel,
         if les_uncs_list[i_cc] < uncs_threshold:
             new_seg += (multi_mask == cc_label).astype("float")
     
-    return new_seg, les_uncs_list
+    return new_seg
     
 def main(args):
     npy_files = Path(args.path_data).glob("*data.npz")
@@ -157,7 +157,7 @@ def main(args):
             
             # load the data
             gt=npy_loader['gt']
-            gt = remove_connected_components(gt, l_min=9)
+            # gt = remove_connected_components(gt, l_min=9)
             seg=npy_loader['seg']
                     
             all_outputs = npy_loader['all_outputs']
