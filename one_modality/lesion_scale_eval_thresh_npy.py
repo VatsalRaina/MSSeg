@@ -95,7 +95,7 @@ def cc_uncertainty(cc_mask, uncs_type,
             les = les[les != 0.0]
             if uncs_type == "sum_ext": return np.sum(uncs_map * max_uncs_mask)
             elif uncs_type == "mean_ext": return np.sum(uncs_map * max_uncs_mask) / np.sum(max_uncs_mask)
-            elif uncs_type == "logsum_ext": np.log(np.sum(uncs_map * max_uncs_mask))
+            elif uncs_type == "logsum_ext": return np.log(np.sum(uncs_map * max_uncs_mask))
             elif uncs_type == "median_ext": return np.median(les)
             elif uncs_type == 'volume_ext': return np.sum(max_uncs_mask)
             else: raise NotImplementedError(uncs_type)
@@ -106,9 +106,7 @@ def cc_uncertainty(cc_mask, uncs_type,
         les = les[les != 0.0]
         if uncs_type == "sum": return np.sum(uncs_map * cc_mask)
         elif uncs_type == "mean": return np.sum(uncs_map * cc_mask) / np.sum(cc_mask)
-        elif uncs_type == "logsum": 
-            val = np.log(np.sum(uncs_map * cc_mask))
-            return val if not np.isnan(val) else np.inf
+        elif uncs_type == "logsum": return val = np.log(np.sum(uncs_map * cc_mask))
         elif uncs_type == "median": return np.median(les)
         elif uncs_type == 'volume': return np.sum(cc_mask)
         else: raise NotImplementedError(uncs_type)
