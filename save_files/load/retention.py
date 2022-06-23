@@ -119,11 +119,11 @@ def main(args):
     th = args.threshold
 
     all_curves_dsc_norm = {
-        # 'confidence': [],
-        # 'entropy_of_expected': [],
-        # 'expected_entropy': [],
-        # 'mutual_information': [],
-        # 'epkl': [],
+        'confidence': [],
+        'entropy_of_expected': [],
+        'expected_entropy': [],
+        'mutual_information': [],
+        'epkl': [],
         'reverse_mutual_information': [],
         'ideal': [],
         'random': []
@@ -164,9 +164,9 @@ def main(args):
 
         # Calculate all AUC-DSCs
         for unc_key, curr_uncs in uncs.items():
-            if unc_key == 'reverse_mutual_information':
-                fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
-                all_curves_dsc_norm[unc_key].append(dsc_norm_curve)
+            # if unc_key == 'reverse_mutual_information':
+            fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), curr_uncs.flatten())
+            all_curves_dsc_norm[unc_key].append(dsc_norm_curve)
 
         # Get ideal score
         fracs_retained, dsc_norm_curve = get_unc_score(gt.flatten(), seg.flatten(), abs(gt.flatten()-seg.flatten()))
@@ -181,15 +181,15 @@ def main(args):
         scores = np.mean(unc_curves_dsc_norm, axis=0)
         all_curves_dsc_norm[unc_key] = scores
 
-    to_plot = ['reverse_mutual_information', 'ideal', 'random']
+    # to_plot = ['reverse_mutual_information', 'ideal', 'random']
 
     # Plot the retention curves now
     for unc_key, scores in all_curves_dsc_norm.items():
         print(unc_key, 1. - metrics.auc(fracs_retained, scores))
-        if unc_key in to_plot:
-            plt.plot(fracs_retained, scores, label=unc_key)
-            with open('./ndsc_' + unc_key + '.npy', 'wb') as f:
-                np.save(f, scores)
+        # if unc_key in to_plot:
+        plt.plot(fracs_retained, scores, label=unc_key)
+        with open('./ndsc_' + unc_key + '.npy', 'wb') as f:
+            np.save(f, scores)
 
     with open('fracs_retained.npy', 'wb') as f:
         np.save(f, fracs_retained)
