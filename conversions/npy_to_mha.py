@@ -13,6 +13,9 @@ parser.add_argument('--out_file', type=str, default=None, help='.mha file to be 
 def main(args):
 
     img_array = np.load(args.in_file)
+    th = 0.35
+    img_array[img_array>th]=1
+    img_array[img_array<th]=0
     image = sitk.GetImageFromArray(np.transpose(img_array))
 
     writer = sitk.ImageFileWriter()
