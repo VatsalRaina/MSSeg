@@ -12,7 +12,7 @@ parser.add_argument('--out_file', type=str, default=None, help='.mha file to be 
 def main(args):
 
     reader = sitk.ImageFileReader()
-    reader.SetImageIO("NiftiImageIO")
+    #reader.SetImageIO("NiftiImageIO")
     reader.SetFileName(args.in_file)
     image = reader.Execute()
 
