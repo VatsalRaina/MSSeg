@@ -82,6 +82,7 @@ parser.add_argument('--path_data', type=str, default='',
                     help='Specify the path to save the segmentations')
 parser.add_argument('--n_jobs', type=int, default=10,
                     help="number of cores used for computation of dsc for different retention fractions")
+parser.add_argument('--filter', action='store_true')
 
 def uncertainty_filtering(binary_mask, ens_pred, uncs_threshold, parallel):
     """
@@ -176,17 +177,20 @@ def main(args):
             
         with Parallel(n_jobs=args.n_jobs) as parallel:
             # clean
-            # seg_all = uncertainty_filtering(seg_all, all_outputs, 0.999999260172124, parallel)
+            if args.filter is True:
+                seg_all = uncertainty_filtering(seg_all, all_outputs, 0.999999260172124, parallel)
             
             row = evaluate(seg_all, gt_all, None, parallel)
             metrics_df = metrics_df.append(row,ignore_index=True)
             metrics_df.to_csv(os.path.join(args.path_save, 'metrics.csv'))
             
+        with Parallel(n_jobs=args.n_jobs) as parallel:
             row = evaluate(seg_all, gt_cl, gt_wml, parallel)
             row['present'] = 1 if gt_cl.sum() >= 1 else 0
             metrics_df_cl = metrics_df_cl.append(row, ignore_index=True)
             metrics_df_cl.to_csv(os.path.join(args.path_save, 'metrics_cl.csv'))
             
+        with Parallel(n_jobs=args.n_jobs) as parallel:
             row = evaluate(seg_all, gt_wml, gt_cl, parallel)
             row['present'] = 1 if gt_wml.sum() >= 1 else 0
             metrics_df_wm = metrics_df_wm.append(row, ignore_index=True)
