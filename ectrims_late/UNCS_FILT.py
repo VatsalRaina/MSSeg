@@ -78,6 +78,8 @@ parser.add_argument('--path_model', type=str,
                     help='Specify the dir to al the trained models')
 parser.add_argument('--path_save', type=str, default='/home/meri/ectrims/last_call/split2_eval', 
                     help='Specify the path to save the segmentations')
+parser.add_argument('--path_data', type=str, default='', 
+                    help='Specify the path to save the segmentations')
 parser.add_argument('--n_jobs', type=int, default=10,
                     help="number of cores used for computation of dsc for different retention fractions")
 
@@ -161,7 +163,7 @@ def main(args):
     metrics_df_cl = pd.DataFrame([], columns=metrics_names + ['present'])
     metrics_df_wm = pd.DataFrame([], columns=metrics_names + ['present'])
     
-    for file in Path("/mnt/nas4/datasets/ToCurate/MSSeg_canonical_nataliia/ectrims_late/").glob("*_data.npy.npz"):
+    for file in Path(args.path_data).glob("*_data.npy.npz"):
         npy_loader = np.load(file)
         seg_all=npy_loader['seg_all']
         gt_all=npy_loader['gt_all']
