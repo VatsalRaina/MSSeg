@@ -147,56 +147,6 @@ def evaluate(seg, gt, other_mask, parallel):
         'tpr': tpr, 'fpr': fpr
     }
 
-def check_dataset(filepaths_list, prefixes):
-    """Check that there are equal amounts of files in both lists and
-    the names before prefices are similar for each of the matched pairs of
-    flair image filepath and gts filepath.
-    Parameters:
-        - flair_filepaths (list) - list of paths to flair images
-        - gts_filepaths (list) - list of paths to lesion masks of flair images
-        - args (argparse.ArgumentParser) - system arguments, should contain `flair_prefix` and `gts_prefix`
-    """
-    if len(filepaths_list) > 1:
-        filepaths_ref = filepaths_list[0]
-        for filepaths in filepaths_list[1:]:
-            assert len(filepaths_ref) == len(
-                filepaths), f"Found {len(filepaths_ref)} ref files and {len(filepaths)}"
-        for sub_filepaths in list(map(list, zip(*filepaths_list))):
-            filepath_ref = sub_filepaths[0]
-            prefix_ref = prefixes[0]
-            for filepath, prefix in zip(sub_filepaths[1:], prefixes[1:]):
-                if os.path.basename(filepath_ref)[:-len(prefix_ref)] != os.path.basename(filepath)[:-len(prefix)]:
-                    raise ValueError(f"{filepath_ref} and {filepath} do not match")
-
-
-def get_data_loader_with_cl(path_flair, path_mp2rage, path_gts, flair_prefix, mp2rage_prefix, gts_prefix, 
-                            check=True,
-                    transforms=None, num_workers=0, batch_size=1, cache_rate=0.5
-                    ):
-    """ Create a torch DataLoader based on the system arguments.
-    """
-    flair = sorted(glob(os.path.join(path_flair, f"*{flair_prefix}")),
-                   key=lambda i: int(re.sub('\D', '', i)))  # Collect all flair images sorted
-    mp2rage = sorted(glob(os.path.join(path_mp2rage, f"*{mp2rage_prefix}")),
-                   key=lambda i: int(re.sub('\D', '', i)))
-    segs = sorted(glob(os.path.join(path_gts, f"*{gts_prefix}")),
-                  key=lambda i: int(re.sub('\D', '', i)))
-    segs_cl = sorted(glob(os.path.join(path_gts, "*cortical_lesions.nii.gz")),
-                  key=lambda i: int(re.sub('\D', '', i)))
-    
-    if check:
-        check_dataset([flair, mp2rage, segs, segs_cl], 
-                      [flair_prefix, mp2rage_prefix, gts_prefix, 'cortical_lesions.nii.gz'])
-
-    print(f"Initializing the dataset. Number of subjects {len(flair)}")
-
-    files = [{"flair": fl, "mp2rage": mp2, "label": seg, "cl_mask": seg_cl} 
-             for fl, mp2, seg, seg_cl in zip(flair, mp2rage, segs, segs_cl)]
-
-    val_ds = CacheDataset(data=files, transform=transforms, 
-                          cache_rate=cache_rate, num_workers=num_workers)
-    return DataLoader(val_ds, shuffle=True, batch_size=batch_size, num_workers=num_workers)
-
 def main(args):
     os.makedirs(args.path_save, exist_ok=True)
     
@@ -211,7 +161,7 @@ def main(args):
     metrics_df_cl = pd.DataFrame([], columns=metrics_names + ['present'])
     metrics_df_wm = pd.DataFrame([], columns=metrics_names + ['present'])
     
-    for file in Path("/home/meri/ectrims/last_call/split2_data").glob("*_data.npy.npz"):
+    for file in Path("/mnt/nas4/datasets/ToCurate/MSSeg_canonical_nataliia/ectrims_late/").glob("*_data.npy.npz"):
         npy_loader = np.load(file)
         seg_all=npy_loader['seg_all']
         gt_all=npy_loader['gt_all']
